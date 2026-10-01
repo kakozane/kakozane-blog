@@ -1,0 +1,6 @@
+# 前台镜像只复制源码与锁文件。
+node_modules
+.env
+build
+.react-router
+*.log

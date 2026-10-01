@@ -1,0 +1,6 @@
+# API 镜像不需要仓库元数据、本地日志或含密码的配置。
+.git
+.env
+config.yaml
+bootstrap-admin.txt
+*.log

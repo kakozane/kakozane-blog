@@ -1,0 +1,29 @@
+localhost:6324 {
+	# API 也经由 HTTPS 对外提供，Gin 只在容器网络内监听。
+	tls internal
+	reverse_proxy api:6324
+}
+
+localhost:6325 {
+	# 前台同源代理 API，其余请求交给 React Router SSR。
+	tls internal
+	handle /api/* {
+		reverse_proxy api:6324
+	}
+	handle {
+		reverse_proxy web:6325
+	}
+}
+
+localhost:6326 {
+	# 后台同源代理 API，并将页面路由回退到入口文件。
+	tls internal
+	handle /api/* {
+		reverse_proxy api:6324
+	}
+	handle {
+		root * /srv/admin
+		try_files {path} /index.html
+		file_server
+	}
+}

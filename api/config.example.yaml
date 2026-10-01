@@ -1,0 +1,11 @@
+# 复制为 config.yaml，填写已有 MySQL 中的博客专用账号密码。
+server:
+  port: 6324
+mysql:
+  host: 127.0.0.1
+  port: 3306
+  database: kakozane_blog
+  user: kakozane_blog_app
+  password: "请填写博客专用账号密码"
+redis:
+  address: 127.0.0.1:6379

@@ -1,0 +1,13 @@
+# 管理后台只需在构建阶段使用 Node 和 pnpm。
+FROM node:24-alpine AS admin-build
+RUN corepack enable
+WORKDIR /src/admin
+COPY admin/package.json admin/pnpm-lock.yaml admin/pnpm-workspace.yaml ./
+RUN pnpm install --frozen-lockfile
+COPY admin/ ./
+RUN pnpm build
+
+# 运行阶段用 Caddy 提供后台静态文件及反向代理。
+FROM caddy:2-alpine
+COPY Caddyfile /etc/caddy/Caddyfile
+COPY --from=admin-build /src/admin/dist /srv/admin

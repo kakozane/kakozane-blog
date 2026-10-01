@@ -1,0 +1,11 @@
+# 根目录是代理镜像的构建上下文，排除本地依赖、产物和配置。
+.git
+.env
+**/.env
+**/config.yaml
+**/bootstrap-admin.txt
+local-ca.crt
+**/node_modules
+**/dist
+**/build
+**/*.log

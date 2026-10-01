@@ -1,0 +1,41 @@
+# 只编排博客应用；MySQL 和 Redis 复用本机已经运行的容器。
+services:
+  api:
+    build: ./api
+    # 只读挂载本机 YAML；密码不会进入镜像或 Compose 文件。
+    volumes:
+      - ./api/config.yaml:/etc/blog/config.yaml:ro
+    environment:
+      GIN_MODE: release
+      BLOG_CONFIG_PATH: /etc/blog/config.yaml
+      # Docker Desktop 内的服务通过宿主机已映射的端口访问现有容器。
+      BLOG_MYSQL_HOST: host.docker.internal
+      BLOG_REDIS_ADDRESS: host.docker.internal:6379
+
+  web:
+    # React Router SSR 需要一个持续运行的 Node 服务。
+    build: ./web
+    environment:
+      PORT: 6325
+      API_INTERNAL_URL: http://api:6324
+    depends_on:
+      - api
+
+  proxy:
+    # 构建管理后台静态文件；Caddy 分别提供前台和后台入口。
+    build:
+      context: .
+      dockerfile: Dockerfile.proxy
+    # 本地 HTTPS 证书与 CA 持久化，容器重建后不会重新生成。
+    volumes:
+      - caddy_data:/data
+    ports:
+      - "127.0.0.1:6324:6324"
+      - "127.0.0.1:6325:6325"
+      - "127.0.0.1:6326:6326"
+    depends_on:
+      - web
+      - api
+
+volumes:
+  caddy_data:

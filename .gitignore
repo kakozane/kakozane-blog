@@ -1,0 +1,16 @@
+.DS_Store
+.env
+.env.*
+!.env.example
+**/.env
+!**/.env.example
+api/config.yaml
+api/bootstrap-admin.txt
+local-ca.crt
+**/node_modules/
+**/build/
+**/dist/
+**/.react-router/
+**/*.tsbuildinfo
+**/*.log
+uploads/
