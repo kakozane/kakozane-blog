@@ -1,0 +1,42 @@
+CREATE TABLE IF NOT EXISTS categories (
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    slug VARCHAR(160) NOT NULL UNIQUE,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS tags (
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    slug VARCHAR(160) NOT NULL UNIQUE,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS posts (
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    author_id BIGINT NOT NULL,
+    category_id BIGINT NULL,
+    title VARCHAR(240) NOT NULL,
+    slug VARCHAR(160) NOT NULL UNIQUE,
+    excerpt VARCHAR(500) NOT NULL DEFAULT '',
+    content_md MEDIUMTEXT NOT NULL,
+    cover_url VARCHAR(1024) NOT NULL DEFAULT '',
+    status VARCHAR(16) NOT NULL DEFAULT 'draft',
+    published_at TIMESTAMP NULL DEFAULT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX posts_public_idx (status, published_at, id),
+    INDEX posts_author_idx (author_id),
+    INDEX posts_category_idx (category_id),
+    CONSTRAINT posts_author_fk FOREIGN KEY (author_id) REFERENCES users(id),
+    CONSTRAINT posts_category_fk FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS post_tags (
+    post_id BIGINT NOT NULL,
+    tag_id BIGINT NOT NULL,
+    PRIMARY KEY (post_id, tag_id),
+    INDEX post_tags_tag_idx (tag_id),
+    CONSTRAINT post_tags_post_fk FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
+    CONSTRAINT post_tags_tag_fk FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

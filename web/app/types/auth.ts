@@ -3,6 +3,10 @@ export interface LoginInput {
   password: string;
 }
 
+export interface RegisterInput extends LoginInput {
+  displayName: string;
+}
+
 export interface PublicUser {
   id: number;
   username: string;

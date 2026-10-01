@@ -1,0 +1,54 @@
+www.kakozane.icu {
+	# 统一到主域名，避免重复页面被搜索引擎收录。
+	redir https://kakozane.icu{uri} permanent
+}
+
+kakozane.icu {
+	# Caddy 使用域名自动申请并续期公开可信的 HTTPS 证书。
+	encode zstd gzip
+	header X-Content-Type-Options nosniff
+	@discovery path /sitemap.xml /feed.xml /robots.txt
+	handle @discovery {
+		reverse_proxy api:6324
+	}
+	handle /api/* {
+		reverse_proxy api:6324 {
+			header_up X-Real-IP {remote_host}
+		}
+	}
+	handle_path /uploads/* {
+		root * /srv/uploads
+		file_server
+	}
+	handle {
+		reverse_proxy web:6325
+	}
+}
+
+admin.kakozane.icu {
+	# 管理后台静态页面和 API 共用域名，登录 Cookie 不跨域。
+	encode zstd gzip
+	header X-Content-Type-Options nosniff
+	handle /api/* {
+		reverse_proxy api:6324 {
+			header_up X-Real-IP {remote_host}
+		}
+	}
+	handle_path /uploads/* {
+		root * /srv/uploads
+		file_server
+	}
+	handle {
+		root * /srv/admin
+		try_files {path} /index.html
+		file_server
+	}
+}
+
+api.kakozane.icu {
+	# 保留独立 API 域名用于服务探活或后续客户端。
+	header X-Content-Type-Options nosniff
+	reverse_proxy api:6324 {
+		header_up X-Real-IP {remote_host}
+	}
+}

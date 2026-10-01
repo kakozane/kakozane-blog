@@ -15,6 +15,7 @@ import (
 	"github.com/go-sql-driver/mysql"
 	"github.com/kakozane/kakozane-blog/api/internal/config"
 	"github.com/kakozane/kakozane-blog/api/internal/password"
+	"github.com/kakozane/kakozane-blog/api/migrations"
 )
 
 func main() {
@@ -46,12 +47,8 @@ func run() error {
 	defer db.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	schema, err := os.ReadFile("migrations/001_users.sql")
-	if err != nil {
-		return err
-	}
-	if _, err := db.ExecContext(ctx, string(schema)); err != nil {
-		return fmt.Errorf("create users table: %w", err)
+	if err := migrations.Apply(ctx, db); err != nil {
+		return fmt.Errorf("apply migrations: %w", err)
 	}
 	var exists bool
 	if err := db.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM users WHERE username = 'admin')").Scan(&exists); err != nil {

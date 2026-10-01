@@ -5,18 +5,22 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
+	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/redis/go-redis/v9"
 )
 
 type User struct {
-	ID           int64
-	Username     string
-	DisplayName  string
-	PasswordHash string
-	Role         string
+	ID             int64
+	Username       string
+	DisplayName    string
+	PasswordHash   string
+	Role           string
+	Status         string
+	SessionVersion int
 }
 
 type AuthRepository struct {
@@ -30,28 +34,40 @@ func NewAuthRepository(db *sql.DB, redisClient *redis.Client) *AuthRepository {
 
 func (r *AuthRepository) FindByUsername(ctx context.Context, username string) (User, error) {
 	var user User
-	err := r.db.QueryRowContext(ctx, "SELECT id, username, display_name, password_hash, role FROM users WHERE username = ?", username).
-		Scan(&user.ID, &user.Username, &user.DisplayName, &user.PasswordHash, &user.Role)
+	err := r.db.QueryRowContext(ctx, "SELECT id, username, display_name, password_hash, role, status, session_version FROM users WHERE username = ?", username).
+		Scan(&user.ID, &user.Username, &user.DisplayName, &user.PasswordHash, &user.Role, &user.Status, &user.SessionVersion)
 	return user, err
 }
 
 func (r *AuthRepository) FindByID(ctx context.Context, id int64) (User, error) {
 	var user User
-	err := r.db.QueryRowContext(ctx, "SELECT id, username, display_name, password_hash, role FROM users WHERE id = ?", id).
-		Scan(&user.ID, &user.Username, &user.DisplayName, &user.PasswordHash, &user.Role)
+	err := r.db.QueryRowContext(ctx, "SELECT id, username, display_name, password_hash, role, status, session_version FROM users WHERE id = ?", id).
+		Scan(&user.ID, &user.Username, &user.DisplayName, &user.PasswordHash, &user.Role, &user.Status, &user.SessionVersion)
 	return user, err
 }
 
-func (r *AuthRepository) SaveSession(ctx context.Context, scope, token string, userID int64) error {
-	return r.redis.Set(ctx, sessionKey(scope, token), userID, 12*time.Hour).Err()
+func (r *AuthRepository) SaveSession(ctx context.Context, scope, token string, userID int64, version int) error {
+	return r.redis.Set(ctx, sessionKey(scope, token), fmt.Sprintf("%d:%d", userID, version), 12*time.Hour).Err()
 }
 
-func (r *AuthRepository) SessionUserID(ctx context.Context, scope, token string) (int64, error) {
+func (r *AuthRepository) SessionUserID(ctx context.Context, scope, token string) (int64, int, error) {
 	value, err := r.redis.Get(ctx, sessionKey(scope, token)).Result()
 	if err != nil {
-		return 0, err
+		return 0, 0, err
 	}
-	return strconv.ParseInt(value, 10, 64)
+	idText, versionText, ok := strings.Cut(value, ":")
+	if !ok {
+		return 0, 0, redis.Nil
+	}
+	id, err := strconv.ParseInt(idText, 10, 64)
+	if err != nil {
+		return 0, 0, redis.Nil
+	}
+	version, err := strconv.Atoi(versionText)
+	if err != nil {
+		return 0, 0, redis.Nil
+	}
+	return id, version, nil
 }
 
 func (r *AuthRepository) DeleteSession(ctx context.Context, scope, token string) error {

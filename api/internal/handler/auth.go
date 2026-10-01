@@ -36,6 +36,45 @@ func (h *AuthHandler) AdminMe(c *gin.Context)     { h.me(c, service.ScopeAdmin) 
 func (h *AuthHandler) FrontLogout(c *gin.Context) { h.logout(c, service.ScopeFront) }
 func (h *AuthHandler) AdminLogout(c *gin.Context) { h.logout(c, service.ScopeAdmin) }
 
+func (h *AuthHandler) RequireAdmin(c *gin.Context) {
+	if c.Request.Method != http.MethodGet && !secureSameOrigin(c) {
+		c.Abort()
+		return
+	}
+	user, err := h.service.CurrentUser(c.Request.Context(), service.ScopeAdmin, cookieValue(c, service.ScopeAdmin))
+	if errors.Is(err, service.ErrUnauthenticated) {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "请先登录管理后台"})
+		return
+	}
+	if err != nil {
+		slog.Error("admin authorization failed", "error", err)
+		c.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{"error": "认证暂不可用"})
+		return
+	}
+	c.Set("adminUserID", user.ID)
+	c.Set("userID", user.ID)
+	c.Next()
+}
+
+func (h *AuthHandler) RequireFront(c *gin.Context) {
+	if c.Request.Method != http.MethodGet && !secureSameOrigin(c) {
+		c.Abort()
+		return
+	}
+	user, err := h.service.CurrentUser(c.Request.Context(), service.ScopeFront, cookieValue(c, service.ScopeFront))
+	if errors.Is(err, service.ErrUnauthenticated) {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "请先登录"})
+		return
+	}
+	if err != nil {
+		slog.Error("front authorization failed", "error", err)
+		c.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{"error": "认证暂不可用"})
+		return
+	}
+	c.Set("userID", user.ID)
+	c.Next()
+}
+
 func (h *AuthHandler) login(c *gin.Context, scope string) {
 	c.Header("Cache-Control", "no-store")
 	if !secureSameOrigin(c) {

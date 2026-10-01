@@ -1,0 +1,46 @@
+# 线上独立编排文件；MySQL 和 Redis 由已有服务提供，不会重复创建。
+services:
+  api:
+    build: ./api
+    # 在 api/config.yaml 中填写生产环境数据库的私网地址和独立账号。
+    volumes:
+      - ./api/config.yaml:/etc/blog/config.yaml:ro
+      - media_data:/data/uploads
+    environment:
+      GIN_MODE: release
+      BLOG_CONFIG_PATH: /etc/blog/config.yaml
+      BLOG_MEDIA_DIRECTORY: /data/uploads
+    # Linux 上可通过 host.docker.internal 访问宿主机已有服务。
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+  web:
+    build: ./web
+    environment:
+      PORT: 6325
+      API_INTERNAL_URL: http://api:6324
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  proxy:
+    build:
+      context: .
+      dockerfile: Dockerfile.proxy
+    # 线上域名配置覆盖镜像内的本地 HTTPS 配置。
+    volumes:
+      - ./Caddyfile.prod:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - media_data:/srv/uploads:ro
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - web
+      - api
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  media_data:

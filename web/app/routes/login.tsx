@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link } from "react-router";
 
 import { Button } from "../components/ui/button";
 import { login } from "../lib/auth";
@@ -9,7 +9,6 @@ export function meta() {
 }
 
 export default function Login() {
-  const navigate = useNavigate();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
 
@@ -23,7 +22,7 @@ export default function Login() {
         username: String(form.get("username") ?? ""),
         password: String(form.get("password") ?? ""),
       });
-      navigate("/", { replace: true });
+      window.location.assign("/");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "登录失败，请稍后重试");
     } finally {
@@ -52,6 +51,7 @@ export default function Login() {
           {pending ? "登录中…" : "登录"}
         </Button>
       </form>
+      <p className="mt-6 text-sm text-muted-foreground">还没有账号？<Link className="text-primary" to="/register">注册账号</Link></p>
     </main>
   );
 }

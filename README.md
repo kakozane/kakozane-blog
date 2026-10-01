@@ -1,166 +1,101 @@
 # Kakozane Blog
 
-一个仓库、三个应用：Go/Gin API、React Router SSR 博客前台、React/Vite 管理后台。前端统一使用 pnpm，依赖版本记录在各自的 `pnpm-lock.yaml` 中。
+个人博客 Monorepo：`api/` 是 Go/Gin 接口，`web/` 是 React Router SSR 前台，`admin/` 是 React + Ant Design Pro 风格后台。前端统一使用 pnpm 和严格 TypeScript；API 统一以 `/api/v1` 开头。
 
-## 技术栈与访问路径
+## 功能
 
-| 应用 | 技术 | 入口 |
-| --- | --- | --- |
-| 博客前台 `web/` | React、React Router 框架模式、Vite、Tailwind CSS、按需使用 shadcn/ui | <https://localhost:6325/>，由 Node 服务端渲染 |
-| 管理后台 `admin/` | React、Vite、Ant Design | <https://localhost:6326/>，静态文件 |
-| 后端 `api/` | Go、Gin、MySQL、Redis | <https://localhost:6324/api/v1/health>，接口统一以 `/api/v1` 开头 |
-
-Caddy 在 6324、6325、6326 提供 HTTPS；前台、后台的 `/api/*` 请求同源代理给 Gin 服务。本项目的 Compose **不会启动 MySQL 或 Redis**：它复用本机已有的 `mysql`（3306）和 `redis`（6379）容器，通过 `host.docker.internal` 访问其宿主机映射端口。
-
-## 文件说明
-
-### 仓库根目录
-
-| 文件 | 作用 |
+| 区域 | 已实现 |
 | --- | --- |
-| `README.md` | 项目结构、启动和验证说明。 |
-| `LICENSE` | MIT 开源许可证。 |
-| `.gitignore` | 排除密码文件、依赖目录、构建产物等。 |
-| `.dockerignore` | 排除代理镜像构建上下文中的无关文件和密码。 |
-| `compose.yaml` | 编排 API、SSR 前台和 Caddy 代理；持久化本地 HTTPS 证书。 |
-| `Dockerfile.proxy` | 使用 pnpm 构建管理后台，再把静态文件复制进 Caddy 镜像。 |
-| `Caddyfile` | 为三个端口启用本地 HTTPS，提供前后台页面及同源 API 代理。 |
-| `local-ca.crt` | 从本机 Caddy 导出的公共根证书，供本机手动信任；不提交仓库。 |
+| 前台 | SSR 首页、文章详情、Markdown、搜索、分类/标签、归档、关于页、分页、RSS、站点地图。 |
+| 读者 | 注册、登录、退出、修改昵称和密码、评论与回复；新评论需审核。 |
+| 后台 | 文章草稿、Markdown 预览和发布、分类、标签、用户、评论审核、图片媒体库、站点设置、个人资料。 |
+| 后端 | MySQL、Redis 会话与限流、Argon2id 密码哈希、自动迁移、路由/处理器/服务/仓库分层与手动依赖注入。 |
 
-### `api/` 后端
+## 文件与目录
 
-| 文件 | 作用 |
+| 路径 | 作用 |
 | --- | --- |
-| `cmd/server/main.go` | 程序入口：连接 MySQL/Redis，组装依赖并启动 HTTP 服务。 |
-| `internal/config/config.go`、`config_test.go` | 读取、校验 YAML 配置及容器环境覆盖；测试缺失配置和端口覆盖。 |
-| `internal/router/router.go` | 创建 Gin 路由，集中注册 `/api/v1/health` 等版本化 API 路径。 |
-| `internal/handler/health.go` | 处理 `/api/v1/health` HTTP 请求和响应。 |
-| `internal/handler/auth.go` | 处理前后台登录、当前用户和退出接口；设置独立的安全 Cookie。 |
-| `internal/service/health.go` | 健康检查业务入口及超时控制。 |
-| `internal/service/auth.go` | 校验密码和管理员身份，签发随机会话并限制失败次数。 |
-| `internal/repository/health.go` | 对 MySQL、Redis 执行实际连接检查。 |
-| `internal/repository/auth.go` | 查询用户，并在 Redis 中存取会话和失败次数。 |
-| `internal/password/password.go`、`password_test.go` | Argon2id 密码哈希与验证。 |
-| `migrations/001_users.sql` | 创建共用的用户表。 |
-| `cmd/bootstrap/main.go` | 首次建表并生成管理员账号。 |
-| `bootstrap-admin.txt` | 本机生成的初始管理员密码，权限 600，已被 Git 和 Docker 忽略。 |
-| `go.mod`、`go.sum` | Go 模块声明与依赖校验记录。 |
-| `config.example.yaml` | 后端 YAML 配置模板；复制为 `config.yaml` 后填写真实密码。 |
-| `config.yaml` | 本机真实后端配置，已被 Git 和 Docker 构建上下文忽略。 |
-| `Dockerfile` | 编译 Go 程序并生成较小的运行镜像。 |
-| `.dockerignore` | 防止本地配置、初始密码和日志进入 API 镜像构建上下文。 |
+| `README.md`、`LICENSE`、`.gitignore` | 项目说明、MIT 许可证和 Git 忽略规则。 |
+| `.dockerignore`、`Dockerfile.proxy` | 代理镜像构建排除规则；构建后台并打包 Caddy。 |
+| `compose.yaml`、`Caddyfile` | 本地三服务编排及 6324/6325/6326 HTTPS 代理。 |
+| `compose.prod.yaml`、`Caddyfile.prod` | 线上独立编排、域名 HTTPS 和 80/443 代理。 |
+| `api/config.example.yaml`、`api/config.yaml` | 后端配置模板及实际配置；实际文件不入库。 |
+| `api/cmd/server/main.go`、`cmd/bootstrap/main.go` | 启动、探活、迁移、组装依赖；首次创建管理员。 |
+| `api/internal/config/`、`password/` | 配置校验、Argon2id 密码处理及测试。 |
+| `api/internal/router/`、`handler/` | 版本化路由；HTTP 请求、响应、Cookie 和错误处理。 |
+| `api/internal/service/`、`repository/` | 业务规则；MySQL/Redis 查询与图片存储。 |
+| `api/internal/model/`、`api/migrations/` | 数据类型；带版本记录的建表 SQL。 |
+| `api/Dockerfile`、`go.mod`、`go.sum` | API 镜像、依赖与校验和。 |
+| `web/app/routes.ts`、`app/routes/` | 前台页面路由：首页、文章、归档、关于、登录、注册和账号。 |
+| `web/app/root.tsx`、`app/app.css` | HTML 根布局、站点数据和前台样式。 |
+| `web/app/components/`、`lib/`、`types/` | 组件、服务端和浏览器端请求、TypeScript 类型。 |
+| `web/react-router.config.ts`、`vite.config.ts`、`Dockerfile` | SSR、开发构建配置和 Node 镜像。 |
+| `admin/src/router/`、`layout/`、`pages/` | 登录保护、ProLayout 菜单及按路由加载的管理页面。 |
+| `admin/src/api/`、`types/` | 后台请求函数和模块化 TypeScript 类型。 |
+| `admin/src/main.tsx`、`App.tsx`、`index.css` | React 入口、根组件和后台基础样式。 |
+| 两个前端的 `package.json`、`pnpm-lock.yaml`、`tsconfig*.json` | 脚本、依赖锁定版本和类型检查配置。 |
 
-### `web/` 博客前台
+配置放在 `api/`，因为数据库密码仅由后端读取。Git 与 Docker 构建上下文会排除 `api/config.yaml`、`api/bootstrap-admin.txt`、依赖和构建产物。
 
-| 文件 | 作用 |
-| --- | --- |
-| `package.json`、`pnpm-lock.yaml` | 前台脚本、依赖及精确锁定版本。 |
-| `react-router.config.ts` | 打开 React Router 的 SSR。 |
-| `vite.config.ts` | 配置 Vite、Tailwind、React Router 及本地 API 代理。 |
-| `tsconfig.json` | TypeScript 编译配置。 |
-| `components.json` | shadcn/ui 的组件生成配置。 |
-| `pnpm-workspace.yaml` | 仅对刚发布的 Vite 锁定版本放行 pnpm 的默认发布等待期。 |
-| `app/root.tsx` | HTML 根布局、全局样式及错误边界。 |
-| `app/routes.ts` | 页面路由表。 |
-| `app/routes/home.tsx` | 博客首页及页面元信息。 |
-| `app/routes/login.tsx` | 前台登录页面。 |
-| `app/lib/auth.ts`、`app/types/auth.ts` | 前台认证请求与严格的 TypeScript 类型。 |
-| `app/app.css` | Tailwind 入口和全局主题变量。 |
-| `app/components/ui/button.tsx` | 已接入的 shadcn/ui 按钮组件示例。 |
-| `Dockerfile`、`.dockerignore` | 使用 pnpm 构建 SSR 前台及控制镜像构建内容。 |
+## 本地运行
 
-### `admin/` 管理后台
-
-| 文件 | 作用 |
-| --- | --- |
-| `package.json`、`pnpm-lock.yaml` | 后台脚本、依赖及精确锁定版本。 |
-| `index.html` | Vite 入口 HTML。 |
-| `vite.config.ts` | 配置后台根路径、6326 本地端口及 API 代理。 |
-| `tsconfig.json`、`tsconfig.app.json`、`tsconfig.node.json` | TypeScript 项目、浏览器代码和构建配置的类型检查选项。 |
-| `.oxlintrc.json` | oxlint 检查规则。 |
-| `pnpm-workspace.yaml` | 仅对刚发布的 Vite 锁定版本放行 pnpm 的默认发布等待期。 |
-| `src/main.tsx` | 挂载 React 应用。 |
-| `src/App.tsx`、`src/router/index.tsx` | 管理后台根组件和路由；未登录时跳转登录页。 |
-| `src/pages/Login.tsx`、`src/pages/Dashboard.tsx` | 后台登录页和登录后的起始页。 |
-| `src/api/auth.ts`、`src/types/auth.ts` | 后台认证请求与严格的 TypeScript 类型。 |
-| `src/index.css` | 后台全局基础样式。 |
-
-## 后端配置和分层
-
-数据库账号、密码以及 Redis 地址都由后端使用，因此配置集中在 `api/config.yaml`，仓库根目录无需再放配置文件。Compose 将该文件只读挂载给 API 容器，并用 `BLOG_*` 环境变量覆盖容器与本机不同的 MySQL/Redis 地址。前台不会接触数据库密码。
-
-当前机器的 `api/config.yaml` 已写入博客专用账号。其他机器首次运行时：
+需要 Docker Desktop，以及已运行并映射至宿主机 3306/6379 的 MySQL/Redis。**本项目不会重复创建这两个容器**。其他机器首次运行时，先创建 `kakozane_blog` 数据库和专用账号：
 
 ```bash
 cp api/config.example.yaml api/config.yaml
-# 编辑 api/config.yaml，填写已有 MySQL 中的博客账号和密码
-```
-
-需要事先在已有 MySQL 中建立 `kakozane_blog` 数据库及有权限的博客账号。Redis 使用已有容器，当前配置未启用密码。不要提交 `api/config.yaml`。
-
-请求流向是 `router → handler → service → repository`。入口 `cmd/server/main.go` 负责创建数据库客户端，并把它们传给 repository，再把 repository 传给 service，最后把 service 传给 handler 和 router；这就是当前项目的手动依赖注入，不需要额外的 DI 框架。目前只有健康检查，所以 repository 只做真实的 MySQL/Redis 探活；文章等数据操作会随相应功能加入。
-
-## 登录与安全
-
-前后台共用 `users` 表，**管理员可以用同一账号登录两端，普通用户只能登录前台**。两个接口会建立不同的会话，分别使用 `__Host-blog-front` 和 `__Host-blog-admin` Cookie；后台登录还会校验 `role=admin`。前台响应只包含 `id`、`username`、`displayName`，后台才返回 `role` 和 `permissions`。目前权限列表只有已生效的 `admin:access`，文章管理权限会在对应接口实现时加入。
-
-| 用途 | 前台接口 | 后台接口 |
-| --- | --- | --- |
-| 登录 | `POST /api/v1/auth/login` | `POST /api/v1/admin/auth/login` |
-| 当前用户 | `GET /api/v1/auth/me` | `GET /api/v1/admin/auth/me` |
-| 退出 | `POST /api/v1/auth/logout` | `POST /api/v1/admin/auth/logout` |
-
-密码通过 HTTPS 传输，数据库只保存加盐后的 Argon2id 哈希。会话令牌由安全随机数生成，Redis 只保存令牌的 SHA-256 摘要，12 小时后失效；浏览器 Cookie 使用 `Secure`、`HttpOnly`、`SameSite=Strict`。登录失败达到 10 次后，该账号需要等待 15 分钟。这里不使用 JWT，所以不需要把签名密钥放进配置或前端；聊天中提供的短字符串没有写入项目。
-
-选择依据：[OWASP 密码存储建议](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html)、[OWASP 会话管理建议](https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html)、[OWASP TLS 建议](https://cheatsheetseries.owasp.org/cheatsheets/Transport_Layer_Security_Cheat_Sheet.html)。
-
-首次使用时，在 `api/` 目录运行 `go run ./cmd/bootstrap`。它会创建用户表和管理员 `admin`，将随机生成的初始密码写入仅本机可读的 `api/bootstrap-admin.txt`。当前机器已经完成这一步。请妥善保管该文件；目前尚未提供找回密码或注册页面。
-
-## 启动
-
-需要 Docker Desktop，以及正在运行、并映射到宿主机 3306/6379 的 MySQL/Redis 容器。当前机器已满足这些条件。
-
-```bash
+# 编辑 api/config.yaml，填入博客数据库账号与密码
+cd api && go run ./cmd/bootstrap && cd ..
 docker compose up --build -d
 docker compose ps
-docker compose cp proxy:/data/caddy/pki/authorities/local/root.crt ./local-ca.crt
-curl --cacert local-ca.crt -f https://localhost:6324/api/v1/health
 ```
 
-本地 Caddy 使用自己的 CA，浏览器首次访问前需要由你将 `local-ca.crt` 导入本机钥匙串并设为信任。随后打开前台 <https://localhost:6325/login>、后台 <https://localhost:6326/login>。仅导出公共根证书，CA 私钥始终留在 Docker 卷内。正式部署时应改用域名和公开可信的 HTTPS 证书。
+当前机器已初始化；重复运行 bootstrap 不会重置管理员密码。初始密码在 `api/bootstrap-admin.txt`，权限为 600，登录后请修改。API 启动时会自动应用未执行的 `api/migrations/*.sql`。
 
-`docker compose down` 仅停止博客应用容器，**不会停止已有的 MySQL/Redis 容器**，也不会删除保存本地 CA 的卷。
+| 地址 | 用途 |
+| --- | --- |
+| <https://localhost:6325/> | 博客前台。 |
+| <https://localhost:6326/> | 管理后台。 |
+| <https://localhost:6324/api/v1/health> | API 探活。 |
 
-## 本地开发
+本地 Caddy 使用自己的 CA。如需浏览器信任，执行 `docker compose cp proxy:/data/caddy/pki/authorities/local/root.crt ./local-ca.crt`，然后由你自己将公共证书导入 macOS Keychain Access 的 `login` 钥匙串并设为信任。可用 `curl --cacert local-ca.crt https://localhost:6324/api/v1/health` 验证。`local-ca.crt` 不入库，CA 私钥仅在 Docker 卷中。`docker compose down` 不会停止已有数据库；不要随意加 `-v`，它会删除图片与证书卷。
 
-本机需要 Go 1.26、Node.js 24。两个前端通过 Corepack 使用 `package.json` 指定的 pnpm 版本。先运行 `docker compose down` 释放 6324、6325、6326 端口，再分别启动以下三个开发服务；MySQL、Redis 不受影响。
+## 开发与检查
+
+本机需要 Go 1.26、Node.js 24 和 Corepack。先 `docker compose down` 释放端口，再把以下三行分别放在独立终端运行：
 
 ```bash
-cd api
-go run ./cmd/server
+cd api && go run ./cmd/server
+cd web && corepack pnpm install --frozen-lockfile && corepack pnpm dev
+cd admin && corepack pnpm install --frozen-lockfile && corepack pnpm dev
 ```
 
-```bash
-cd web
-corepack pnpm install --frozen-lockfile
-corepack pnpm dev
-```
-
-```bash
-cd admin
-corepack pnpm install --frozen-lockfile
-corepack pnpm dev
-```
-
-本地开发入口与 Compose 使用相同端口，但 Go/Vite 直跑时是 HTTP，仅用于页面开发和健康检查；登录接口要求 HTTPS，请通过上述 Compose 入口联调真实账号。两个 Vite 开发服务器将 `/api` 请求代理到本地 API。
-
-## 检查
+直接运行的开发服务是 HTTP，真实登录接口要求 HTTPS；账号联调用 Compose 入口。
 
 ```bash
 cd api && go test ./...
 cd ../web && corepack pnpm typecheck && corepack pnpm build
 cd ../admin && corepack pnpm lint && corepack pnpm build
-cd .. && docker compose config -q
+cd .. && docker compose config -q && docker compose -f compose.prod.yaml config -q
 ```
 
-当前已包含基础登录，文章、注册及密码管理功能尚未实现。正式部署前还需要配置域名、公开可信的 HTTPS 证书和 MySQL 备份。现有 MySQL/Redis 容器的端口与生命周期由其原有配置管理，本项目不会修改它们。
+## 接口与登录
+
+前后台共用 `users` 表，但登录接口、会话和 Cookie 独立。读者只可登录前台，管理员可登录两端。前台个人信息只返回账号与昵称，后台管理员信息才包含身份和权限。密码经 HTTPS 传输，数据库只存 Argon2id 哈希；Redis 存随机会话令牌的 SHA-256 摘要。Cookie 使用 `Secure`、`HttpOnly`、`SameSite=Strict`。修改密码、停用用户或改变身份会令旧会话失效；项目不使用 JWT 签名密钥。
+
+| 用途 | 主要接口 |
+| --- | --- |
+| 前台账号 | `POST /api/v1/auth/register`、`login`、`logout`、`change-password`；`GET /api/v1/auth/me`；`PUT /api/v1/auth/profile`。 |
+| 公开内容 | `GET /api/v1/posts`、`posts/:slug`、`categories`、`tags`、`site`；`GET /sitemap.xml`、`feed.xml`、`robots.txt`。 |
+| 评论 | `GET /api/v1/posts/:slug/comments`；登录后 `POST /api/v1/posts/:slug/comments`。 |
+| 后台账号 | `POST /api/v1/admin/auth/login`、`logout`、`change-password`；`GET /api/v1/admin/auth/me`；`PUT /api/v1/admin/auth/profile`。 |
+| 后台管理 | `/api/v1/admin/posts`、`categories`、`tags`、`users`、`comments`、`media`、`site`。 |
+
+公开注册固定为 `reader` 身份，并按 IP 限制频率；评论默认待审核。图片限 JPEG、PNG、GIF、WebP 和 5 MiB。公开文章列表只显示已发布内容，草稿仅在后台可见。
+
+## 线上部署
+
+规划地址：博客 <https://kakozane.icu/>，后台 <https://admin.kakozane.icu/>，独立 API <https://api.kakozane.icu/api/v1/health>。浏览器页面仍通过各自域名下的 `/api/v1` 同源访问 API。先将这些域名及 `www.kakozane.icu` 解析到服务器，并开放 80/443；Caddy 会自动申请、续期公开可信的证书。
+
+生产机的 `api/config.yaml` 应填写**仅私网可达**的 MySQL/Redis 地址和独立数据库账号，不要公开数据库端口。然后执行 `docker compose -f compose.prod.yaml up --build -d`。首次部署前执行 `cd api && go run ./cmd/bootstrap` 创建管理员；请确认运行 bootstrap 的机器可访问生产数据库并妥善保存初始密码。后台“站点设置”中的站点地址应为 `https://kakozane.icu`，用于 RSS 和站点地图。
+
+备份需同时包含 MySQL 的 `kakozane_blog` 数据库与 Docker 的 `media_data` 图片卷；`caddy_data` 保存 TLS 状态。升级前先备份，并安全保存 `api/config.yaml`。生产域名和数据库私网连通性要在正式部署时验证。

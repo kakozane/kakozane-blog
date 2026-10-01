@@ -48,7 +48,7 @@ func (s *AuthService) Login(ctx context.Context, username, secret, scope string)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return repository.User{}, "", err
 	}
-	if err != nil || !password.Verify(secret, user.PasswordHash) || (scope == ScopeAdmin && user.Role != "admin") {
+	if err != nil || user.Status != "active" || !password.Verify(secret, user.PasswordHash) || (scope == ScopeAdmin && user.Role != "admin") {
 		if err := s.repo.RecordFailedLogin(ctx, username); err != nil {
 			return repository.User{}, "", err
 		}
@@ -59,7 +59,7 @@ func (s *AuthService) Login(ctx context.Context, username, secret, scope string)
 		return repository.User{}, "", err
 	}
 	token := base64.RawURLEncoding.EncodeToString(random)
-	if err := s.repo.SaveSession(ctx, scope, token, user.ID); err != nil {
+	if err := s.repo.SaveSession(ctx, scope, token, user.ID, user.SessionVersion); err != nil {
 		return repository.User{}, "", err
 	}
 	if err := s.repo.ClearFailedLogins(ctx, username); err != nil {
@@ -72,7 +72,7 @@ func (s *AuthService) CurrentUser(ctx context.Context, scope, token string) (rep
 	if token == "" {
 		return repository.User{}, ErrUnauthenticated
 	}
-	id, err := s.repo.SessionUserID(ctx, scope, token)
+	id, version, err := s.repo.SessionUserID(ctx, scope, token)
 	if errors.Is(err, redis.Nil) {
 		return repository.User{}, ErrUnauthenticated
 	}
@@ -86,7 +86,7 @@ func (s *AuthService) CurrentUser(ctx context.Context, scope, token string) (rep
 	if err != nil {
 		return repository.User{}, err
 	}
-	if scope == ScopeAdmin && user.Role != "admin" {
+	if user.Status != "active" || user.SessionVersion != version || (scope == ScopeAdmin && user.Role != "admin") {
 		return repository.User{}, ErrUnauthenticated
 	}
 	return user, nil

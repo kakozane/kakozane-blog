@@ -1,54 +1,63 @@
-import { useEffect, useState } from "react";
-import { Link } from "react-router";
+import { Form, Link, useLoaderData, useRouteLoaderData } from "react-router";
 
-import { currentUser, logout } from "../lib/auth";
-import type { PublicUser } from "../types/auth";
+import { PostList } from "../components/post-list";
+import { SiteHeader } from "../components/site-header";
+import { getCategories, getPosts } from "../lib/posts.server";
+import type { Route } from "./+types/home";
+import type { Site } from "../types/site";
 
 export function meta() {
   return [
-    { title: "Kakozane 的博客" },
-    { name: "description", content: "记录技术、思考与生活。" },
+    { title: "Kakozane · 记录，思考，分享" },
+    { name: "description", content: "记录技术实践、思考与生活的个人博客。" },
   ];
 }
 
+export async function loader({ request }: Route.LoaderArgs) {
+  const params = new URL(request.url).searchParams;
+  const [posts, categories] = await Promise.all([getPosts(params), getCategories()]);
+  return { posts, categories, query: params.get("q") ?? "", category: params.get("category") ?? "", tag: params.get("tag") ?? "" };
+}
+
 export default function Home() {
-  const [user, setUser] = useState<PublicUser | null>(null);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    void currentUser().then(setUser).catch(() => setError("暂时无法读取登录状态"));
-  }, []);
-
-  async function signOut() {
-    try {
-      await logout();
-      setUser(null);
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "退出失败");
-    }
-  }
-
+  const { posts, categories, query, category, tag } = useLoaderData<typeof loader>();
+  const { site } = useRouteLoaderData("root") as { site: Site };
   return (
-    <div className="mx-auto min-h-screen max-w-3xl px-6 py-10">
-      <header className="flex items-center justify-between border-b border-border pb-6">
-        <a className="text-xl font-semibold tracking-tight" href="/">Kakozane</a>
-        {user ? (
-          <div className="flex items-center gap-4 text-sm">
-            <span>{user.displayName}</span>
-            <button className="text-muted-foreground hover:text-foreground" onClick={signOut} type="button">退出</button>
+    <div className="site-shell">
+      <SiteHeader />
+      <main>
+        <section className="hero">
+          <p className="eyebrow">KAKOZANE · PERSONAL BLOG</p>
+          <h1>{site.tagline}</h1>
+          <p className="hero-description">{site.description}</p>
+        </section>
+        <section className="content-section" aria-labelledby="latest-title">
+          <div className="section-heading">
+            <div><p className="eyebrow">THE JOURNAL</p><h2 id="latest-title">最新文章</h2></div>
+            <span>{posts.total} 篇</span>
           </div>
-        ) : (
-          <Link className="text-sm text-muted-foreground hover:text-foreground" to="/login">登录</Link>
-        )}
-      </header>
-      <main className="py-20">
-        {error && <p className="mb-4 text-sm text-destructive" role="alert">{error}</p>}
-        <p className="mb-3 text-sm text-muted-foreground">欢迎来到我的博客</p>
-        <h1 className="mb-6 text-4xl font-semibold tracking-tight sm:text-5xl">记录，思考，分享。</h1>
-        <p className="max-w-xl leading-8 text-muted-foreground">
-          这里会放下技术实践和日常思考。第一篇文章正在准备中。
-        </p>
+          <Form className="post-search" method="get" role="search">
+            <label className="sr-only" htmlFor="post-query">搜索文章</label>
+            <input defaultValue={query} id="post-query" name="q" placeholder="搜索文章标题或摘要" type="search" />
+            <button type="submit">搜索</button>
+          </Form>
+          {categories.length > 0 && (
+            <nav aria-label="文章分类" className="category-nav">
+              <Link aria-current={!category ? "page" : undefined} to="/">全部</Link>
+              {categories.map((item) => <Link aria-current={category === item.slug ? "page" : undefined} key={item.id} to={`/?category=${encodeURIComponent(item.slug)}`}>{item.name}</Link>)}
+            </nav>
+          )}
+          <PostList posts={posts.items} />
+          {posts.total > posts.pageSize && (
+            <nav aria-label="文章分页" className="pagination">
+              {posts.page > 1 && <Link to={`/?page=${posts.page - 1}${query ? `&q=${encodeURIComponent(query)}` : ""}${category ? `&category=${encodeURIComponent(category)}` : ""}${tag ? `&tag=${encodeURIComponent(tag)}` : ""}`}>← 上一页</Link>}
+              <span>第 {posts.page} 页</span>
+              {posts.page * posts.pageSize < posts.total && <Link to={`/?page=${posts.page + 1}${query ? `&q=${encodeURIComponent(query)}` : ""}${category ? `&category=${encodeURIComponent(category)}` : ""}${tag ? `&tag=${encodeURIComponent(tag)}` : ""}`}>下一页 →</Link>}
+            </nav>
+          )}
+        </section>
       </main>
+      <footer className="site-footer"><span>© {new Date().getFullYear()} {site.title}</span><span>{site.githubUrl && <a href={site.githubUrl} rel="noopener noreferrer" target="_blank">GitHub ↗ · </a>}<a href="/feed.xml">RSS 订阅</a></span></footer>
     </div>
   );
 }

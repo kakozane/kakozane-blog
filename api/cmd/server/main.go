@@ -20,6 +20,7 @@ import (
 	"github.com/kakozane/kakozane-blog/api/internal/repository"
 	"github.com/kakozane/kakozane-blog/api/internal/router"
 	"github.com/kakozane/kakozane-blog/api/internal/service"
+	"github.com/kakozane/kakozane-blog/api/migrations"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -47,6 +48,7 @@ func run() error {
 	mySQLConfig.Addr = net.JoinHostPort(cfg.MySQL.Host, strconv.Itoa(cfg.MySQL.Port))
 	mySQLConfig.DBName = cfg.MySQL.Database
 	mySQLConfig.ParseTime = true
+	mySQLConfig.ClientFoundRows = true
 	db, err := sql.Open("mysql", mySQLConfig.FormatDSN())
 	if err != nil {
 		return fmt.Errorf("open mysql: %w", err)
@@ -59,15 +61,30 @@ func run() error {
 	// 在入口处组装依赖，业务层不负责创建数据库连接。
 	healthService := service.NewHealthService(repository.NewHealthRepository(db, redisClient))
 	authService := service.NewAuthService(repository.NewAuthRepository(db, redisClient))
+	contentRepo := repository.NewContentRepository(db)
+	contentService := service.NewContentService(contentRepo)
+	userService := service.NewUserService(repository.NewUserRepository(db, redisClient))
+	commentService := service.NewCommentService(repository.NewCommentRepository(db, redisClient), contentRepo, repository.NewAuthRepository(db, redisClient))
+	mediaRepo, err := repository.NewMediaRepository(db, cfg.Media.Directory)
+	if err != nil {
+		return fmt.Errorf("create media directory: %w", err)
+	}
+	mediaService := service.NewMediaService(mediaRepo)
+	siteRepo := repository.NewSiteRepository(db)
+	siteService := service.NewSiteService(siteRepo)
+	feedService := service.NewFeedService(contentRepo, siteRepo)
 	startupCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := healthService.Check(startupCtx); err != nil {
 		return fmt.Errorf("check dependencies: %w", err)
 	}
+	if err := migrations.Apply(startupCtx, db); err != nil {
+		return fmt.Errorf("apply migrations: %w", err)
+	}
 
 	server := &http.Server{
 		Addr:              net.JoinHostPort("", strconv.Itoa(cfg.Server.Port)),
-		Handler:           router.New(handler.NewHealthHandler(healthService), handler.NewAuthHandler(authService)),
+		Handler:           router.New(handler.NewHealthHandler(healthService), handler.NewAuthHandler(authService), handler.NewContentHandler(contentService), handler.NewUserHandler(userService), handler.NewCommentHandler(commentService), handler.NewMediaHandler(mediaService), handler.NewSiteHandler(siteService), handler.NewFeedHandler(feedService)),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 	shutdownCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)

@@ -5,12 +5,15 @@ services:
     # 只读挂载本机 YAML；密码不会进入镜像或 Compose 文件。
     volumes:
       - ./api/config.yaml:/etc/blog/config.yaml:ro
+      # 图片持久化，容器重建后仍保留上传文件。
+      - media_data:/data/uploads
     environment:
       GIN_MODE: release
       BLOG_CONFIG_PATH: /etc/blog/config.yaml
       # Docker Desktop 内的服务通过宿主机已映射的端口访问现有容器。
       BLOG_MYSQL_HOST: host.docker.internal
       BLOG_REDIS_ADDRESS: host.docker.internal:6379
+      BLOG_MEDIA_DIRECTORY: /data/uploads
 
   web:
     # React Router SSR 需要一个持续运行的 Node 服务。
@@ -29,6 +32,8 @@ services:
     # 本地 HTTPS 证书与 CA 持久化，容器重建后不会重新生成。
     volumes:
       - caddy_data:/data
+      # Caddy 只读提供上传图片，不修改文件。
+      - media_data:/srv/uploads:ro
     ports:
       - "127.0.0.1:6324:6324"
       - "127.0.0.1:6325:6325"
@@ -39,3 +44,4 @@ services:
 
 volumes:
   caddy_data:
+  media_data:
