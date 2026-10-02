@@ -6,6 +6,7 @@ import { getPage, savePage } from '../api/pages'
 import UnsavedChangesDialog from '../components/UnsavedChangesDialog'
 import MarkdownImageUpload from '../components/MarkdownImageUpload'
 import MarkdownPreview from '../components/MarkdownPreview'
+import MarkdownToolbar from '../components/MarkdownToolbar'
 import { openFrontPreview } from '../lib/front-preview'
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges'
 import { useDraftBackup } from '../hooks/useDraftBackup'
@@ -70,6 +71,7 @@ export default function PageEditor() {
         <Form.Item label="标题" name="title" rules={[{ required: true, whitespace: true }, { max: 240 }]}><Input maxLength={240} size="large" /></Form.Item>
         <Form.Item extra="可用中文、英文、数字和连字符" label="链接名" name="slug" rules={[{ required: true }, { pattern: /^[\p{L}\p{N}]+(?:-[\p{L}\p{N}]+)*$/u, message: '只能使用文字、数字和连字符' }]}><Input maxLength={160} placeholder="例如 uses" /></Form.Item>
         <Form.Item label="摘要" name="description" rules={[{ max: 500 }]}><Input.TextArea maxLength={500} rows={3} showCount /></Form.Item>
+        <MarkdownToolbar editorRef={editorRef} form={form} onDirty={queueDraft} />
         <Form.Item label="正文（Markdown）" name="contentMd"><Input.TextArea className="markdown-editor" ref={editorRef} rows={18} /></Form.Item>
         <MarkdownImageUpload editorRef={editorRef} form={form} onDirty={queueDraft} onUploadingChange={setUploadingImage} uploading={uploadingImage} />
         <Card className="markdown-preview" size="small" title="正文预览"><MarkdownPreview value={preview} /></Card>

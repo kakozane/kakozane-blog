@@ -6,6 +6,7 @@ import { getPost, listTerms, savePost } from '../api/content'
 import UnsavedChangesDialog from '../components/UnsavedChangesDialog'
 import MarkdownImageUpload from '../components/MarkdownImageUpload'
 import MarkdownPreview from '../components/MarkdownPreview'
+import MarkdownToolbar from '../components/MarkdownToolbar'
 import { openFrontPreview } from '../lib/front-preview'
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges'
 import { useDraftBackup } from '../hooks/useDraftBackup'
@@ -103,6 +104,7 @@ export default function PostEditor({ kind }: { kind: 'post' | 'note' }) {
           <Form.Item label="标题" name="title" rules={[{ required: true, message: `请输入${label}标题` }, { max: 240 }]}><Input maxLength={240} placeholder={`${label}标题`} size="large" /></Form.Item>
           <Form.Item extra="网址中使用的简短名称，可用中英文、数字和连字符" label={`${label}链接`} name="slug" rules={[{ required: true, message: `请输入${label}链接` }, { pattern: /^[\p{L}\p{N}]+(?:-[\p{L}\p{N}]+)*$/u, message: '只能使用文字、数字和连字符' }]}><Input maxLength={160} placeholder="例如 my-first-post" /></Form.Item>
           <Form.Item label="摘要" name="excerpt" rules={[{ max: 500 }]}><Input.TextArea maxLength={500} placeholder={`用于${label}列表和搜索摘要`} rows={3} showCount /></Form.Item>
+          <MarkdownToolbar editorRef={editorRef} form={form} onDirty={queueDraft} />
           <Form.Item extra="提示块可写为 > [!NOTE]、> [!TIP]、> [!WARNING] 等，下一行继续以 > 开头" label="正文（Markdown）" name="contentMd"><Input.TextArea className="markdown-editor" placeholder="开始写作，支持表格、代码块、Mermaid 图表、LaTeX 公式和提示块" ref={editorRef} rows={18} /></Form.Item>
           <MarkdownImageUpload editorRef={editorRef} form={form} onDirty={queueDraft} onUploadingChange={setUploadingImage} uploading={uploadingImage} />
           <Card className="markdown-preview" size="small" title="正文预览"><MarkdownPreview value={preview} /></Card>

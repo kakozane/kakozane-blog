@@ -226,3 +226,17 @@ flowchart LR
 - 开发与生产应使用各自的 Redis 实例或数据库，避免共享统计集合。
 
 检查去重和过期逻辑：`cd api && BLOG_TEST_REDIS=127.0.0.1:6379 go test ./internal/repository -run TestPresence`。测试使用独立临时键，结束后清理，不清空数据库。
+
+### 本地演示内容与编辑工具栏
+
+`api/cmd/seed-demo/` 提供演示数据导入命令：`main.go` 负责事务写入，`content.go` 加载随程序打包的 `content.json`。
+
+```bash
+cd api
+go run ./cmd/seed-demo          # 仅查看数量
+go run ./cmd/seed-demo --apply  # 使用 config.yaml 中的数据库连接写入
+```
+
+共 70 条已发布内容：28 篇文章、21 篇手记、21 条思考，2020—2026 年每年 10 条，最晚日期为 2026-10-01。标题或正文标明演示，链接统一使用 `demo-年份-序号`；重复执行跳过已有链接，不覆盖原有内容。需要先完成数据库迁移并创建管理员。请仅对需要演示数据的数据库执行。
+
+文章、手记和自定义页面共用 `admin/src/components/MarkdownToolbar.tsx` 格式工具栏，文本插入逻辑位于 `admin/src/lib/markdown-format.ts`。选中文字后可添加标题、加粗、列表、链接、代码等；也可插入表格、公式与 Mermaid 模板，图片继续通过上传按钮插入。当前是 Markdown 编辑与实时预览，不是 Word 式所见即所得编辑器。工具栏修改同样触发未保存提醒和本地草稿备份。
