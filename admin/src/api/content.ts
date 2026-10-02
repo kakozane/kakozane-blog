@@ -15,10 +15,11 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   return data
 }
 
-export function listPosts(page = 1, pageSize = 10, status = '', q = ''): Promise<PostList> {
+export function listPosts(page = 1, pageSize = 10, status = '', q = '', kind: Post['kind'] | 'all' = 'all'): Promise<PostList> {
   const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) })
   if (status) params.set('status', status)
   if (q) params.set('q', q)
+  if (kind !== 'all') params.set('kind', kind)
   return request<PostList>(`${adminApi}/posts?${params}`)
 }
 
@@ -37,7 +38,7 @@ export function deletePost(id: number): Promise<void> {
 }
 
 export async function listTerms(kind: 'categories' | 'tags'): Promise<Term[]> {
-  return (await request<{ items: Term[] }>(`/api/v1/${kind}`)).items
+  return (await request<{ items: Term[] }>(`${adminApi}/${kind}`)).items
 }
 
 export function saveTerm(kind: 'categories' | 'tags', input: Pick<Term, 'name' | 'slug'>, id?: number): Promise<Term> {

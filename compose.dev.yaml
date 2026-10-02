@@ -1,0 +1,110 @@
+# 开发模式：源码同步给运行中的容器，保留与正式环境相同的 HTTPS 入口。
+# MySQL、Redis 继续复用已有容器；不要与 compose.yaml 同时启动。
+services:
+  api:
+    build:
+      context: ./api
+      target: build
+    # 编译后 exec 二进制，让 Compose 重启时 SIGTERM 直达 Go 服务。
+    command: ["sh", "-c", "go build -o /tmp/blog-api ./cmd/server && exec /tmp/blog-api"]
+    volumes:
+      - ./api/config.yaml:/etc/blog/config.yaml:ro
+      - media_data:/data/uploads
+    environment:
+      BLOG_CONFIG_PATH: /etc/blog/config.yaml
+      BLOG_MYSQL_HOST: host.docker.internal
+      BLOG_REDIS_ADDRESS: host.docker.internal:6379
+      BLOG_MEDIA_DIRECTORY: /data/uploads
+    develop:
+      watch:
+        # Go 源码变化时同步并重启进程，无须重建镜像。
+        - action: sync+restart
+          path: ./api
+          target: /src
+          initial_sync: true
+          ignore:
+            - config.yaml
+            - bootstrap-admin.txt
+            - go.mod
+            - go.sum
+        # 依赖变化才重建开发镜像。
+        - action: rebuild
+          path: ./api/go.mod
+        - action: rebuild
+          path: ./api/go.sum
+
+  web:
+    build:
+      context: ./web
+      target: build
+    command: pnpm dev --host 0.0.0.0
+    environment:
+      PORT: 6325
+      API_INTERNAL_URL: http://api:6324
+    depends_on:
+      - api
+    develop:
+      watch:
+        # Vite / React Router 接收同步后的代码并触发 HMR。
+        - action: sync
+          path: ./web
+          target: /app
+          initial_sync: true
+          ignore:
+            - node_modules
+            - build
+            - .react-router
+            - package.json
+            - pnpm-lock.yaml
+            - pnpm-workspace.yaml
+        - action: rebuild
+          path: ./web/package.json
+        - action: rebuild
+          path: ./web/pnpm-lock.yaml
+        - action: rebuild
+          path: ./web/pnpm-workspace.yaml
+
+  admin:
+    build:
+      context: .
+      dockerfile: Dockerfile.proxy
+      target: admin-build
+    command: pnpm dev --host 0.0.0.0
+    develop:
+      watch:
+        # 后台由 Vite 即时更新。
+        - action: sync
+          path: ./admin
+          target: /src/admin
+          initial_sync: true
+          ignore:
+            - node_modules
+            - dist
+            - package.json
+            - pnpm-lock.yaml
+            - pnpm-workspace.yaml
+        - action: rebuild
+          path: ./admin/package.json
+        - action: rebuild
+          path: ./admin/pnpm-lock.yaml
+        - action: rebuild
+          path: ./admin/pnpm-workspace.yaml
+
+  proxy:
+    image: caddy:2-alpine
+    volumes:
+      - ./Caddyfile.dev:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - media_data:/srv/uploads:ro
+    ports:
+      - "127.0.0.1:6324:6324"
+      - "127.0.0.1:6325:6325"
+      - "127.0.0.1:6326:6326"
+    depends_on:
+      - api
+      - web
+      - admin
+
+volumes:
+  caddy_data:
+  media_data:

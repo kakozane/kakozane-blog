@@ -18,6 +18,10 @@ export function setCommentStatus(id: number, status: Comment['status']): Promise
   return request<Comment>(`/api/v1/admin/comments/${id}/status`, { method: 'PUT', body: JSON.stringify({ status }) })
 }
 
+export function setCommentPinned(id: number, pinned: boolean): Promise<Comment> {
+  return request<Comment>(`/api/v1/admin/comments/${id}/pin`, { method: 'PUT', body: JSON.stringify({ pinned }) })
+}
+
 export function deleteComment(id: number): Promise<void> {
   return request<void>(`/api/v1/admin/comments/${id}`, { method: 'DELETE' })
 }

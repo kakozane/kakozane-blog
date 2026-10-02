@@ -1,0 +1,40 @@
+localhost:6324 {
+	# 开发入口仍使用 HTTPS，登录 Cookie 和同源校验可正常工作。
+	tls internal
+	reverse_proxy api:6324
+}
+
+localhost:6325 {
+	tls internal
+	@discovery path /sitemap.xml /feed.xml /notes/feed.xml /thinking/feed.xml /says/feed.xml /robots.txt
+	handle @discovery {
+		reverse_proxy api:6324
+	}
+	handle /api/* {
+		reverse_proxy api:6324
+	}
+	handle_path /uploads/* {
+		root * /srv/uploads
+		header X-Content-Type-Options nosniff
+		file_server
+	}
+	handle {
+		# Caddy 会透传 Vite 的 WebSocket 热更新连接。
+		reverse_proxy web:6325
+	}
+}
+
+localhost:6326 {
+	tls internal
+	handle /api/* {
+		reverse_proxy api:6324
+	}
+	handle_path /uploads/* {
+		root * /srv/uploads
+		header X-Content-Type-Options nosniff
+		file_server
+	}
+	handle {
+		reverse_proxy admin:6326
+	}
+}

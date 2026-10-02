@@ -18,19 +18,66 @@ func NewContentHandler(contentService *service.ContentService) *ContentHandler {
 	return &ContentHandler{service: contentService}
 }
 
-func (h *ContentHandler) ListPosts(c *gin.Context)      { h.listPosts(c, true) }
-func (h *ContentHandler) ListAdminPosts(c *gin.Context) { h.listPosts(c, false) }
+func (h *ContentHandler) PublicationStats(c *gin.Context) {
+	stats, err := h.service.PublicationStats(c.Request.Context())
+	if err != nil {
+		contentError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, stats)
+}
 
-func (h *ContentHandler) listPosts(c *gin.Context, publishedOnly bool) {
+func (h *ContentHandler) ListPosts(c *gin.Context)    { h.listPosts(c, true, "post") }
+func (h *ContentHandler) ListNotes(c *gin.Context)    { h.listPosts(c, true, "note") }
+func (h *ContentHandler) ListThoughts(c *gin.Context) { h.listPosts(c, true, "thought") }
+func (h *ContentHandler) ListNoteSeries(c *gin.Context) {
+	items, err := h.service.ListNoteSeries(c.Request.Context())
+	if err != nil {
+		contentError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"items": items})
+}
+func (h *ContentHandler) ListTimeline(c *gin.Context) {
+	kind := c.DefaultQuery("kind", "all")
+	if kind == "all" && c.Query("featured") == "1" {
+		kind = "note"
+	}
+	h.listPosts(c, true, kind)
+}
+func (h *ContentHandler) TimelineYears(c *gin.Context) {
+	years, err := h.service.TimelineYears(c.Request.Context(), c.Query("featured") == "1")
+	if err != nil {
+		contentError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"years": years})
+}
+func (h *ContentHandler) TimelineMonths(c *gin.Context) {
+	months, err := h.service.MonthlyActivity(c.Request.Context())
+	if err != nil {
+		contentError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"months": months})
+}
+func (h *ContentHandler) ListAdminPosts(c *gin.Context) {
+	h.listPosts(c, false, c.DefaultQuery("kind", "all"))
+}
+
+func (h *ContentHandler) listPosts(c *gin.Context, publishedOnly bool, kind string) {
 	page, pageErr := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, sizeErr := strconv.Atoi(c.DefaultQuery("pageSize", "10"))
-	if pageErr != nil || sizeErr != nil {
+	year, yearErr := strconv.Atoi(c.DefaultQuery("year", "0"))
+	if pageErr != nil || sizeErr != nil || yearErr != nil {
 		contentError(c, service.ErrInvalidInput)
 		return
 	}
 	filter := model.PostFilter{
-		PublishedOnly: publishedOnly, Status: c.Query("status"), Query: c.Query("q"),
-		CategorySlug: c.Query("category"), TagSlug: c.Query("tag"), Page: page, PageSize: pageSize,
+		PublishedOnly: publishedOnly, PinnedFirst: publishedOnly && kind == "post" && c.Query("pinFirst") == "1",
+		FeaturedOnly: publishedOnly && c.Query("featured") == "1",
+		Kind:         kind, Status: c.Query("status"), Query: c.Query("q"),
+		CategorySlug: c.Query("category"), TagSlug: c.Query("tag"), Year: year, Month: c.Query("month"), Sort: c.Query("sort"), Page: page, PageSize: pageSize,
 	}
 	items, total, err := h.service.ListPosts(c.Request.Context(), filter)
 	if err != nil {
@@ -46,10 +93,30 @@ func (h *ContentHandler) listPosts(c *gin.Context, publishedOnly bool) {
 	c.JSON(http.StatusOK, gin.H{"items": items, "total": total, "page": page, "pageSize": pageSize})
 }
 
-func (h *ContentHandler) GetPost(c *gin.Context) {
+func (h *ContentHandler) GetPost(c *gin.Context)         { h.getPublished(c, "post") }
+func (h *ContentHandler) GetNote(c *gin.Context)         { h.getPublished(c, "note") }
+func (h *ContentHandler) GetThought(c *gin.Context)      { h.getPublished(c, "thought") }
+func (h *ContentHandler) RelatedPosts(c *gin.Context)    { h.related(c, "post") }
+func (h *ContentHandler) RelatedNotes(c *gin.Context)    { h.related(c, "note") }
+func (h *ContentHandler) RelatedThoughts(c *gin.Context) { h.related(c, "thought") }
+
+func (h *ContentHandler) related(c *gin.Context, kind string) {
+	connections, err := h.service.RelatedPosts(c.Request.Context(), c.Param("slug"), kind)
+	if err != nil {
+		contentError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, connections)
+}
+
+func (h *ContentHandler) getPublished(c *gin.Context, kind string) {
 	item, err := h.service.PublishedPostBySlug(c.Request.Context(), c.Param("slug"))
 	if err != nil {
 		contentError(c, err)
+		return
+	}
+	if item.Kind != kind {
+		contentError(c, repository.ErrNotFound)
 		return
 	}
 	c.JSON(http.StatusOK, item)
@@ -108,11 +175,13 @@ func (h *ContentHandler) DeletePost(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-func (h *ContentHandler) ListCategories(c *gin.Context) { h.listTerms(c, "categories") }
-func (h *ContentHandler) ListTags(c *gin.Context)       { h.listTerms(c, "tags") }
+func (h *ContentHandler) ListCategories(c *gin.Context)      { h.listTerms(c, "categories", true) }
+func (h *ContentHandler) ListTags(c *gin.Context)            { h.listTerms(c, "tags", true) }
+func (h *ContentHandler) ListAdminCategories(c *gin.Context) { h.listTerms(c, "categories", false) }
+func (h *ContentHandler) ListAdminTags(c *gin.Context)       { h.listTerms(c, "tags", false) }
 
-func (h *ContentHandler) listTerms(c *gin.Context, kind string) {
-	items, err := h.service.ListTerms(c.Request.Context(), kind)
+func (h *ContentHandler) listTerms(c *gin.Context, kind string, publicOnly bool) {
+	items, err := h.service.ListTerms(c.Request.Context(), kind, publicOnly)
 	if err != nil {
 		contentError(c, err)
 		return

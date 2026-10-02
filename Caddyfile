@@ -9,7 +9,7 @@ localhost:6324 {
 localhost:6325 {
 	# 前台同源代理 API，其余请求交给 React Router SSR。
 	tls internal
-	@discovery path /sitemap.xml /feed.xml /robots.txt
+	@discovery path /sitemap.xml /feed.xml /notes/feed.xml /thinking/feed.xml /says/feed.xml /robots.txt
 	handle @discovery {
 		reverse_proxy api:6324
 	}

@@ -1,11 +1,12 @@
 import { Link, useLoaderData } from "react-router";
 
 import { SiteHeader } from "../components/site-header";
+import { SiteFooter } from "../components/site-footer";
 import { formatDate } from "../lib/date";
 import { getPosts } from "../lib/posts.server";
 import type { Route } from "./+types/archive";
 
-export function meta() { return [{ title: "文章归档 · Kakozane" }]; }
+export function meta({ matches }: Route.MetaArgs) { return [{ title: `文章归档 · ${matches[0].loaderData.site.title}` }]; }
 
 export async function loader({ request }: Route.LoaderArgs) {
   const params = new URL(request.url).searchParams;
@@ -19,7 +20,6 @@ export default function Archive() {
     <div className="site-shell">
       <SiteHeader />
       <main className="simple-page archive-page">
-        <p className="eyebrow">ARCHIVE</p>
         <h1>文章归档</h1>
         <p>按发布时间收录的全部文章，共 {posts.total} 篇。</p>
         <div className="archive-list">
@@ -30,6 +30,7 @@ export default function Archive() {
           {posts.page * posts.pageSize < posts.total && <Link to={`/archive?page=${posts.page + 1}`}>下一页 →</Link>}
         </nav>
       </main>
+      <SiteFooter />
     </div>
   );
 }

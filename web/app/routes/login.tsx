@@ -1,14 +1,17 @@
 import { useState, type FormEvent } from "react";
-import { Link } from "react-router";
+import { Link, useSearchParams } from "react-router";
 
-import { Button } from "../components/ui/button";
 import { login } from "../lib/auth";
+import { authPagePath, safeReturnPath } from "../lib/auth-return";
+import type { Route } from "./+types/login";
 
-export function meta() {
-  return [{ title: "登录 · Kakozane" }];
+export function meta({ matches }: Route.MetaArgs) {
+  return [{ title: `登录 · ${matches[0].loaderData.site.title}` }];
 }
 
 export default function Login() {
+  const [search] = useSearchParams();
+  const next = safeReturnPath(search.get("next"));
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
 
@@ -22,7 +25,7 @@ export default function Login() {
         username: String(form.get("username") ?? ""),
         password: String(form.get("password") ?? ""),
       });
-      window.location.assign("/");
+      window.location.assign(next);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "登录失败，请稍后重试");
     } finally {
@@ -31,27 +34,19 @@ export default function Login() {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-12">
-      <Link className="mb-10 text-sm text-muted-foreground hover:text-foreground" to="/">
-        ← 返回博客
-      </Link>
-      <h1 className="text-3xl font-semibold tracking-tight">登录博客</h1>
-      <p className="mt-2 text-sm text-muted-foreground">使用你的博客账号继续。</p>
-      <form className="mt-8 space-y-5" onSubmit={submit}>
-        <div>
-          <label className="mb-2 block text-sm font-medium" htmlFor="username">账号</label>
-          <input className="w-full rounded-lg border border-border bg-background px-3 py-2 outline-none focus-visible:ring-2 focus-visible:ring-ring" id="username" name="username" autoComplete="username" maxLength={64} required />
-        </div>
-        <div>
-          <label className="mb-2 block text-sm font-medium" htmlFor="password">密码</label>
-          <input className="w-full rounded-lg border border-border bg-background px-3 py-2 outline-none focus-visible:ring-2 focus-visible:ring-ring" id="password" name="password" type="password" autoComplete="current-password" required />
-        </div>
-        {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
-        <Button className="h-10 w-full" disabled={pending} type="submit">
-          {pending ? "登录中…" : "登录"}
-        </Button>
-      </form>
-      <p className="mt-6 text-sm text-muted-foreground">还没有账号？<Link className="text-primary" to="/register">注册账号</Link></p>
+    <main className="auth-page">
+      <div className="auth-panel">
+        <Link className="auth-back" to={next}>← 返回博客</Link>
+        <h1>登录</h1>
+        <p className="auth-intro">使用博客账号继续阅读和参与讨论。</p>
+        <form className="auth-form" onSubmit={submit}>
+          <div className="auth-field"><label htmlFor="username">账号</label><input autoComplete="username" id="username" maxLength={64} name="username" required /></div>
+          <div className="auth-field"><label htmlFor="password">密码</label><input autoComplete="current-password" id="password" name="password" required type="password" /></div>
+          {error && <p className="auth-error" role="alert">{error}</p>}
+          <button className="auth-submit" disabled={pending} type="submit">{pending ? "登录中…" : "登录"}</button>
+        </form>
+        <p className="auth-switch">还没有账号？<Link to={search.has("next") ? authPagePath("register", next) : "/register"}>注册账号</Link></p>
+      </div>
     </main>
   );
 }

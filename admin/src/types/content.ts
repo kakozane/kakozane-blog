@@ -2,6 +2,7 @@ export type Term = { id: number; name: string; slug: string }
 
 export type Post = {
   id: number
+  kind: 'post' | 'note' | 'thought'
   authorId: number
   authorName: string
   categoryId: number | null
@@ -13,6 +14,7 @@ export type Post = {
   contentMd?: string
   coverUrl: string
   status: 'draft' | 'published'
+  pinned: boolean
   tags: Term[]
   publishedAt: string | null
   createdAt: string
@@ -20,12 +22,14 @@ export type Post = {
 }
 
 export type PostInput = {
+  kind: 'post' | 'note' | 'thought'
   title: string
   slug: string
   excerpt: string
   contentMd: string
   coverUrl: string
   status: 'draft' | 'published'
+  pinned: boolean
   categoryId: number | null
   tagIds: number[]
 }

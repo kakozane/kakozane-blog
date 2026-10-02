@@ -1,3 +1,4 @@
-# Vite 刚发布的锁定版本按用户要求使用最新版；其他依赖保留 pnpm 的发布等待期。
+# 指定最新的锁定版本；其他依赖保留 pnpm 的发布等待期。
 minimumReleaseAgeExclude:
   - vite@8.3.2
+  - katex@0.19.0

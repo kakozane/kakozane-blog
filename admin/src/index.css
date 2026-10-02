@@ -26,10 +26,42 @@ body {
 .admin-toolbar { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
 .dashboard-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
 .markdown-editor { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, monospace; line-height: 1.7; }
+.markdown-image-upload { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: -8px 0 24px; }
+.markdown-image-upload span { color: #86868b; font-size: 12px; }
 .markdown-preview { margin-bottom: 24px; overflow-wrap: anywhere; }
 .markdown-preview img { max-width: 100%; height: auto; }
 .markdown-preview pre { overflow-x: auto; }
+.markdown-preview .markdown-alert { --alert-color: #0066cc; margin: 16px 0; padding: 12px 16px; border-left: 3px solid var(--alert-color); border-radius: 0 8px 8px 0; background: #f5f5f7; }
+.markdown-preview .markdown-alert-tip { --alert-color: #1d7a43; }
+.markdown-preview .markdown-alert-important { --alert-color: #7654a8; }
+.markdown-preview .markdown-alert-warning { --alert-color: #936200; }
+.markdown-preview .markdown-alert-caution { --alert-color: #b42318; }
+.markdown-preview .markdown-alert-title { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--alert-color); font-size: 13px; font-weight: 600; }
+.markdown-preview .markdown-alert-title svg { width: 1em; height: 1em; fill: currentColor; flex: none; }
+.markdown-preview .markdown-alert > :last-child { margin-bottom: 0; }
+.markdown-preview .hljs-comment, .markdown-preview .hljs-quote { color: #6e6e73; }
+.markdown-preview .hljs-keyword, .markdown-preview .hljs-selector-tag, .markdown-preview .hljs-built_in { color: #a434a0; }
+.markdown-preview .hljs-string, .markdown-preview .hljs-attr, .markdown-preview .hljs-addition { color: #0c7a43; }
+.markdown-preview .hljs-number, .markdown-preview .hljs-literal, .markdown-preview .hljs-symbol { color: #1f6ed4; }
+.markdown-preview .hljs-title, .markdown-preview .hljs-type, .markdown-preview .hljs-function { color: #a64b00; }
+.markdown-preview .katex-display { max-width: 100%; overflow-x: auto; overflow-y: hidden; }
+.markdown-preview .task-list-item { list-style: none; }
+.markdown-preview .task-list-item input { margin-left: -1.5em; margin-right: 6px; accent-color: #0066cc; }
+.markdown-preview .footnotes { margin-top: 28px; padding-top: 12px; border-top: 1px solid #e8e8ed; color: #6e6e73; font-size: 13px; }
+.markdown-preview .footnotes .footnote-label { margin: 0 0 10px; color: #1d1d1f; font-size: 14px; }
+.markdown-preview .footnotes ol { padding-left: 22px; }
+.markdown-preview [data-footnote-ref], .markdown-preview [data-footnote-backref] { color: #0066cc; }
+.markdown-preview .preview-mermaid { position: relative; margin: 16px 0; padding: 38px 16px 12px; border-radius: 8px; background: #f5f5f7; }
+.markdown-preview .preview-mermaid-label { position: absolute; top: 14px; left: 16px; color: #6e6e73; font-size: 11px; font-weight: 600; }
+.markdown-preview .preview-mermaid > img { display: block; max-width: 100%; margin: 0 auto; }
+.markdown-preview .preview-mermaid > pre { margin: 0; padding: 12px 0; background: transparent; }
+.markdown-preview .preview-mermaid details { margin-top: 12px; border-top: 1px solid #e8e8ed; }
+.markdown-preview .preview-mermaid summary { padding: 12px 0; color: #0066cc; cursor: pointer; }
+.markdown-preview .preview-mermaid details pre { margin: 0; padding: 12px; background: #fff; }
+.markdown-preview .preview-mermaid > p { color: #b42318; font-size: 13px; }
 .editor-selects { display: flex; align-items: flex-start; }
+.setting-nav-row { display: grid; grid-template-columns: minmax(120px, 1fr) minmax(220px, 2fr) auto; gap: 12px; align-items: start; }
+.setting-nav-remove { margin-top: 29px; }
 .profile-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
 .media-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 18px; margin-bottom: 24px; }
 .media-grid .ant-card-cover { height: 190px; overflow: hidden; background: #f2f4f2; }
@@ -38,3 +70,4 @@ body {
 .media-actions .ant-typography { max-width: 150px; overflow: hidden; text-overflow: ellipsis; }
 @media (max-width: 850px) { .profile-grid { grid-template-columns: 1fr; } }
 @media (max-width: 700px) { .dashboard-grid { grid-template-columns: 1fr; } .admin-page-heading { align-items: flex-start; flex-direction: column; } }
+@media (max-width: 600px) { .setting-nav-row { grid-template-columns: 1fr auto; } .setting-nav-row .ant-form-item:nth-child(2) { grid-column: 1; } .setting-nav-remove { grid-column: 2; grid-row: 1; } }

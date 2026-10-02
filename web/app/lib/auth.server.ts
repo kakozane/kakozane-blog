@@ -1,4 +1,5 @@
 import type { PublicUser } from "../types/auth";
+import type { LikedPostList } from "../types/content";
 
 const api = process.env.API_INTERNAL_URL ?? "http://localhost:6324";
 
@@ -11,4 +12,10 @@ export async function frontUser(request: Request): Promise<PublicUser | null> {
   } catch {
     return null;
   }
+}
+
+export async function likedPosts(request: Request, page: number): Promise<LikedPostList> {
+  const response = await fetch(`${api}/api/v1/auth/likes?page=${page}`, { headers: { Cookie: request.headers.get("Cookie") ?? "" } });
+  if (!response.ok) throw new Error("无法读取喜欢的内容");
+  return (await response.json()) as LikedPostList;
 }

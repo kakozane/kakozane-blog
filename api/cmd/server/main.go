@@ -62,17 +62,24 @@ func run() error {
 	healthService := service.NewHealthService(repository.NewHealthRepository(db, redisClient))
 	authService := service.NewAuthService(repository.NewAuthRepository(db, redisClient))
 	contentRepo := repository.NewContentRepository(db)
-	contentService := service.NewContentService(contentRepo)
+	eventService := service.NewEventService(repository.NewEventRepository(redisClient))
+	contentService := service.NewContentService(contentRepo, eventService)
 	userService := service.NewUserService(repository.NewUserRepository(db, redisClient))
 	commentService := service.NewCommentService(repository.NewCommentRepository(db, redisClient), contentRepo, repository.NewAuthRepository(db, redisClient))
+	likeService := service.NewLikeService(repository.NewLikeRepository(db), contentRepo)
+	friendService := service.NewFriendService(repository.NewFriendRepository(db))
+	projectService := service.NewProjectService(repository.NewProjectRepository(db))
+	pageRepo := repository.NewPageRepository(db)
+	pageService := service.NewPageService(pageRepo)
+	sayService := service.NewSayService(repository.NewSayRepository(db))
 	mediaRepo, err := repository.NewMediaRepository(db, cfg.Media.Directory)
 	if err != nil {
 		return fmt.Errorf("create media directory: %w", err)
 	}
 	mediaService := service.NewMediaService(mediaRepo)
 	siteRepo := repository.NewSiteRepository(db)
-	siteService := service.NewSiteService(siteRepo)
-	feedService := service.NewFeedService(contentRepo, siteRepo)
+	siteService := service.NewSiteService(siteRepo, eventService)
+	feedService := service.NewFeedService(contentRepo, siteRepo, pageRepo)
 	startupCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := healthService.Check(startupCtx); err != nil {
@@ -84,7 +91,7 @@ func run() error {
 
 	server := &http.Server{
 		Addr:              net.JoinHostPort("", strconv.Itoa(cfg.Server.Port)),
-		Handler:           router.New(handler.NewHealthHandler(healthService), handler.NewAuthHandler(authService), handler.NewContentHandler(contentService), handler.NewUserHandler(userService), handler.NewCommentHandler(commentService), handler.NewMediaHandler(mediaService), handler.NewSiteHandler(siteService), handler.NewFeedHandler(feedService)),
+		Handler:           router.New(handler.NewHealthHandler(healthService), handler.NewAuthHandler(authService), handler.NewContentHandler(contentService), handler.NewUserHandler(userService), handler.NewCommentHandler(commentService), handler.NewLikeHandler(likeService, authService), handler.NewEventHandler(eventService), handler.NewFriendHandler(friendService), handler.NewProjectHandler(projectService), handler.NewPageHandler(pageService), handler.NewSayHandler(sayService), handler.NewMediaHandler(mediaService), handler.NewSiteHandler(siteService), handler.NewFeedHandler(feedService, sayService)),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 	shutdownCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)

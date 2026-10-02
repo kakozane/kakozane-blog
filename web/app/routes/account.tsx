@@ -1,19 +1,28 @@
 import { useState, type FormEvent } from "react";
-import { redirect, useLoaderData } from "react-router";
+import { Link, redirect, useLoaderData } from "react-router";
 
 import { SiteHeader } from "../components/site-header";
+import { SiteFooter } from "../components/site-footer";
 import { changePassword, updateProfile } from "../lib/auth";
-import { frontUser } from "../lib/auth.server";
+import { frontUser, likedPosts } from "../lib/auth.server";
+import { contentLabel, contentPath } from "../lib/content-path";
+import { formatDate } from "../lib/date";
 import type { Route } from "./+types/account";
 
-export function meta() { return [{ title: "我的账号 · Kakozane" }]; }
+export function meta({ matches }: Route.MetaArgs) { return [{ title: `我的账号 · ${matches[0].loaderData.site.title}` }, { name: "robots", content: "noindex,nofollow" }]; }
+export function headers() { return { "Cache-Control": "private, no-store" }; }
 
 export async function loader({ request }: Route.LoaderArgs) {
-  return (await frontUser(request)) ?? redirect("/login");
+  const user = await frontUser(request);
+  if (!user) return redirect("/login");
+  const requestedPage = Number(new URL(request.url).searchParams.get("likesPage") ?? 1);
+  const page = Number.isSafeInteger(requestedPage) && requestedPage > 0 && requestedPage <= 100000 ? requestedPage : 1;
+  const likes = await likedPosts(request, page).catch(() => null);
+  return { user, likes };
 }
 
 export default function Account() {
-  const user = useLoaderData<typeof loader>();
+  const { user, likes } = useLoaderData<typeof loader>();
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -51,7 +60,6 @@ export default function Account() {
     <div className="site-shell">
       <SiteHeader />
       <main className="simple-page account-page">
-        <p className="eyebrow">ACCOUNT</p>
         <h1>我的账号</h1>
         <p>账号：{user.username}</p>
         {message && <p className="account-message" role="alert">{message}</p>}
@@ -62,6 +70,11 @@ export default function Account() {
             <input defaultValue={user.displayName} id="displayName" maxLength={100} name="displayName" required />
             <button disabled={busy} type="submit">保存昵称</button>
           </form>
+        </section>
+        <section aria-labelledby="account-likes-title" id="liked">
+          <h2 id="account-likes-title">我喜欢的内容{likes && <span className="account-likes-count">{likes.total}</span>}</h2>
+          {likes === null ? <p className="account-likes-empty">暂时无法读取喜欢的内容，请稍后刷新。</p> : likes.items.length === 0 ? <p className="account-likes-empty">点过赞的公开内容会显示在这里。</p> : <ol className="account-likes-list">{likes.items.map((item) => <li key={`${item.kind}-${item.slug}`}><div><span>{contentLabel(item.kind)}</span><Link to={contentPath(item.kind, item.slug)}>{item.title}</Link></div><time dateTime={item.likedAt}>{formatDate(item.likedAt, true)}</time></li>)}</ol>}
+          {likes && likes.total > likes.pageSize && <nav aria-label="喜欢内容分页" className="pagination">{likes.page > 1 ? <Link to={`/account?likesPage=${likes.page - 1}#liked`}>← 上一页</Link> : <span />}{likes.page * likes.pageSize < likes.total ? <Link to={`/account?likesPage=${likes.page + 1}#liked`}>下一页 →</Link> : <span />}</nav>}
         </section>
         <section>
           <h2>修改密码</h2>
@@ -76,6 +89,7 @@ export default function Account() {
           </form>
         </section>
       </main>
+      <SiteFooter />
     </div>
   );
 }

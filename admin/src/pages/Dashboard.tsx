@@ -15,7 +15,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     let active = true
-    Promise.all([listPosts(1, 1), listPosts(1, 1, 'draft'), listUsers(), listComments(1, 'pending')])
+    Promise.all([listPosts(1, 1, '', '', 'post'), listPosts(1, 1, 'draft', '', 'post'), listUsers(), listComments(1, 'pending')])
       .then(([posts, drafts, users, pending]) => {
         if (active) setCounts({ posts: posts.total, drafts: drafts.total, users: users.total, pending: pending.total })
       })

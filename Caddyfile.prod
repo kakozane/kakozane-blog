@@ -7,7 +7,7 @@ kakozane.icu {
 	# Caddy 使用域名自动申请并续期公开可信的 HTTPS 证书。
 	encode zstd gzip
 	header X-Content-Type-Options nosniff
-	@discovery path /sitemap.xml /feed.xml /robots.txt
+	@discovery path /sitemap.xml /feed.xml /notes/feed.xml /thinking/feed.xml /says/feed.xml /robots.txt
 	handle @discovery {
 		reverse_proxy api:6324
 	}
