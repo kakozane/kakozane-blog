@@ -64,6 +64,16 @@ docker compose -f compose.dev.yaml up --build --watch
 
 ## 开发与检查
 
+开发模式也支持标准 HTTPS 域名。首次在 macOS 执行 `bash scripts/setup-dev-hosts.sh`，输入管理员密码后，脚本会备份 `/etc/hosts` 并将下面三个域名映射到 `127.0.0.1`：
+
+| 地址 | 用途 |
+| --- | --- |
+| `https://dev.kakozane.icu` | 博客前台 |
+| `https://admin.dev.kakozane.icu` | 管理后台 |
+| `https://api.dev.kakozane.icu/api/v1/health` | API 健康检查 |
+
+开发代理在本机 443 端口提供这些入口，沿用 Caddy 本地 CA；需要信任同一个本地根证书。Vite 仅放行对应的开发域名。原有 `localhost:6324/6325/6326` 入口继续可用。若使用系统代理，需把这三个开发域名加入代理绕过列表，保证请求到达本机。
+
 首次进入开发模式运行下面的命令，并保持终端打开。它会构建开发镜像并监视文件：
 
 ```bash
@@ -90,6 +100,25 @@ cd .. && docker compose config -q && docker compose -f compose.prod.yaml config 
 前后台共用 `users` 表，但登录接口、会话和 Cookie 独立。读者只可登录前台，管理员可登录两端。前台个人信息只返回账号与昵称，后台管理员信息才包含身份和权限。密码经 HTTPS 传输，数据库只存 Argon2id 哈希；Redis 存随机会话令牌的 SHA-256 摘要。Cookie 使用 `Secure`、`HttpOnly`、`SameSite=Strict`。修改密码、停用用户或改变身份会令旧会话失效；项目不使用 JWT 签名密钥。
 
 读者从文章、手记或思考进入登录页后，登录成功会回到原内容；从评论区进入会回到评论位置。切换到注册页时也会保留返回地址。返回地址只接受站内路径，防止登录后跳转到外部网站。
+
+### 前后台单点登录
+
+在 `api/config.yaml` 的 `auth.sso_sites` 中精确配对前后台的 HTTPS 来源（包含端口、不含路径和末尾斜杠）。开发配置见模板；线上配置为：
+
+```yaml
+auth:
+  sso_sites:
+    - front_origin: https://kakozane.icu
+      admin_origin: https://admin.kakozane.icu
+```
+
+前台已登录时，后台登录页会显示账号提示；管理员点击“使用此账号登录后台”即可继续，普通读者会看到无后台权限的提示。先登录后台时，前台首页及登录页也会显示确认入口。切回标签页会重新检查另一端状态。登录提示失败时仍可使用账号密码登录。
+
+两端 Cookie 继续使用 `__Host-`、`Secure`、`HttpOnly` 和 `SameSite=Strict`，不设置共享 Domain。只有配对来源能跨域读取最少的账号信息并申请凭证；凭证在 Redis 保存 60 秒，绑定目标来源与身份、原子消费一次，仅在浏览器内存和 HTTPS JSON 请求中传递。确认时重新核对提示的账号，交换时再次检查来源会话、账号状态、会话版本及管理员权限。
+
+此流程用于同站点子域名（或 localhost 不同端口），不支持任意不同主域名之间共享登录。开发与生产应分别配置。每端会话独立有效 12 小时；退出只注销当前端，不会自动重新登录，也不会注销另一端已经建立的会话。来源退出后，尚未交换的凭证立即失效；修改密码、停用账号和角色变更会令已有会话及待交换凭证失效。
+
+验证命令：`cd api && BLOG_TEST_REDIS=127.0.0.1:6379 go test ./...` 检查真实 Redis 凭证生命周期；根目录运行 `python3 scripts/check-sso.py` 检查双向登录、权限、来源边界和凭证失效。后者默认读取本机初始管理员文件，也可通过 `BLOG_TEST_ADMIN_USER`、`BLOG_TEST_ADMIN_PASSWORD` 环境变量提供账号；它创建临时测试用户，完成后删除，不修改已有账号。
 
 | 用途 | 主要接口 |
 | --- | --- |
@@ -183,3 +212,17 @@ flowchart LR
 生产机的 `api/config.yaml` 应填写**仅私网可达**的 MySQL/Redis 地址和独立数据库账号，不要公开数据库端口。然后执行 `docker compose -f compose.prod.yaml up --build -d`。首次部署前执行 `cd api && go run ./cmd/bootstrap` 创建管理员；请确认运行 bootstrap 的机器可访问生产数据库并妥善保存初始密码。后台“站点设置”中的站点地址应为 `https://kakozane.icu`，用于 RSS 和站点地图。
 
 备份需同时包含 MySQL 的 `kakozane_blog` 数据库与 Docker 的 `media_data` 图片卷；`caddy_data` 保存 TLS 状态。升级前先备份，并安全保存 `api/config.yaml`。生产域名和数据库私网连通性要在正式部署时验证。
+
+### 前台版式与在线人数
+
+前台的栏目版式集中在 `web/app/editorial.css`，基础主题和 Markdown 样式仍在 `web/app/app.css`。首页居中介绍，手记采用信纸与日期栏，思考采用动态卡，友链为头像卡，项目为文字目录；时间线可以切换舒展、紧凑、速览。手机端有底部菜单。滚动入场由 `components/page-motion.tsx` 提供，不会默认隐藏 SSR 内容；页脚背景动效开关默认关闭，设置保存到本机，系统减少动态效果时不播放。
+
+右下角显示**在线访客浏览器数**，不是已登录账号数或实名名单：
+
+- 复用 `GET /api/v1/events?visitor=<UUID>` 的 SSE 连接，连接成功时及每 25 秒发送 `presence` 事件，内容为 `{ "count": 3 }`。
+- `web/app/lib/visitor.ts` 在 localStorage 保存随机访客标识；支持 Web Locks 时串行初始化，同一浏览器同一站点的多个标签页去重。无痕、不同浏览器、不同开发域名分别计数；禁止本地存储时只能按当前页面计数。
+- 后端沿用 handler → service → repository 分层；Redis Sorted Set 记录随机标识与最近心跳时间，不记录姓名/IP。超过 75 秒没有心跳的访客在下次统计时剔除，整个集合无访问 150 秒后自动删除。
+- 断线时隐藏人数，重连后恢复。人数是近实时估计，关闭标签页不会立刻减一，也不是防机器人或审计用途的准确人数。长连接本身不代表用户正在操作。
+- 开发与生产应使用各自的 Redis 实例或数据库，避免共享统计集合。
+
+检查去重和过期逻辑：`cd api && BLOG_TEST_REDIS=127.0.0.1:6379 go test ./internal/repository -run TestPresence`。测试使用独立临时键，结束后清理，不清空数据库。

@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
 import { Link, NavLink, useLocation, useRevalidator, useRouteLoaderData } from "react-router";
 
+import { visitorID } from "../lib/visitor";
 import { logout } from "../lib/auth";
 import { authPagePath } from "../lib/auth-return";
 import { isSearchShortcut } from "../lib/search-shortcut";
 import { contentLabel, contentPath } from "../lib/content-path";
 import { ThemeSwitch } from "./theme-switch";
 import { SearchDialog } from "./search-dialog";
+import { SSOPrompt } from "./sso-prompt";
 import type { PublicUser } from "../types/auth";
 import type { Site } from "../types/site";
 import type { Post } from "../types/content";
@@ -33,6 +35,7 @@ export function SiteHeader() {
   const location = useLocation();
   const { user, site } = useRouteLoaderData("root") as { user: PublicUser | null; site: Site };
   const { revalidate } = useRevalidator();
+  const [online, setOnline] = useState<number | null>(null);
   const [error, setError] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [announcement, setAnnouncement] = useState<{ kind: Post["kind"]; title: string; slug: string } | null>(null);
@@ -51,20 +54,32 @@ export function SiteHeader() {
   }, []);
 
   useEffect(() => {
-    const source = new EventSource("/api/v1/events");
-    function published(event: Event) {
-      try {
-        const data: unknown = JSON.parse((event as MessageEvent).data);
-        if (data && typeof data === "object" && "kind" in data && "title" in data && "slug" in data &&
-          (data.kind === "post" || data.kind === "note" || data.kind === "thought") && typeof data.title === "string" && typeof data.slug === "string") {
-          setAnnouncement({ kind: data.kind, title: data.title, slug: data.slug });
-        }
-      } catch { /* 忽略无法识别的消息。 */ }
-    }
-    function siteChanged() { void revalidate(); }
-    source.addEventListener("published", published);
-    source.addEventListener("site", siteChanged);
-    return () => source.close();
+    let closed = false;
+    let source: EventSource | undefined;
+    void visitorID().then((visitor) => {
+      if (closed) return;
+      source = new EventSource(`/api/v1/events?visitor=${encodeURIComponent(visitor)}`);
+      source.addEventListener("presence", (event) => {
+        try {
+          const data: unknown = JSON.parse((event as MessageEvent).data);
+          if (data && typeof data === "object" && "count" in data && typeof data.count === "number" && Number.isSafeInteger(data.count) && data.count >= 0) setOnline(data.count);
+        } catch { /* 无效消息不更新人数。 */ }
+      });
+      source.onerror = () => setOnline(null);
+      function published(event: Event) {
+        try {
+          const data: unknown = JSON.parse((event as MessageEvent).data);
+          if (data && typeof data === "object" && "kind" in data && "title" in data && "slug" in data &&
+            (data.kind === "post" || data.kind === "note" || data.kind === "thought") && typeof data.title === "string" && typeof data.slug === "string") {
+            setAnnouncement({ kind: data.kind, title: data.title, slug: data.slug });
+          }
+        } catch { /* 忽略无法识别的消息。 */ }
+      }
+      function siteChanged() { void revalidate(); }
+      source.addEventListener("published", published);
+      source.addEventListener("site", siteChanged);
+    }).catch(() => setOnline(null));
+    return () => { closed = true; source?.close(); };
   }, [revalidate]);
 
   useEffect(() => {
@@ -99,9 +114,12 @@ export function SiteHeader() {
         <details className="site-nav-more"><summary aria-current={moreActive ? "page" : undefined}>更多</summary><div className="site-nav-more-panel">{moreItems.map((item, index) => item.to.startsWith("https://") ? <a href={item.to} key={`${item.to}-${index}`} onClick={(event) => event.currentTarget.closest("details")?.removeAttribute("open")} rel="noopener noreferrer" target="_blank">{item.label} ↗</a> : <NavLink key={`${item.to}-${index}`} onClick={(event) => event.currentTarget.closest("details")?.removeAttribute("open")} to={item.to}>{item.label}</NavLink>)}</div></details>
       </nav>
       <div className="site-actions"><button aria-keyshortcuts="Meta+K Control+K" aria-label="快速搜索" className="site-search-trigger" onClick={() => setSearchOpen(true)} title="快速搜索（⌘K / Ctrl+K）" type="button"><svg aria-hidden="true" fill="none" height="18" stroke="currentColor" strokeLinecap="round" strokeWidth="1.8" viewBox="0 0 24 24" width="18"><circle cx="10.8" cy="10.8" r="6.8" /><path d="m16 16 4.5 4.5" /></svg></button><ThemeSwitch />{user ? <button className="site-login" onClick={signOut} type="button">退出</button> : <Link className="site-login" to={authPagePath("login", `${location.pathname}${location.search}${location.hash}`)}>登录</Link>}
-        <details className="site-menu"><summary>菜单</summary><nav aria-label="小屏导航" className="site-menu-panel">{links.map((item, index) => item.to.startsWith("https://") ? <a href={item.to} key={`${item.to}-${index}`} onClick={(event) => event.currentTarget.closest("details")?.removeAttribute("open")} rel="noopener noreferrer" target="_blank">{item.label} ↗</a> : <NavLink end={item.to === "/"} key={`${item.to}-${index}`} onClick={(event) => event.currentTarget.closest("details")?.removeAttribute("open")} to={item.to}>{item.label}</NavLink>)}</nav></details>
+
       </div>
     </header>
+        <details className="site-menu"><summary><span className="mobile-site-name">{site.title}</span><span>菜单 ☰</span></summary><nav aria-label="小屏导航" className="site-menu-panel">{links.map((item, index) => item.to.startsWith("https://") ? <a href={item.to} key={`${item.to}-${index}`} onClick={(event) => event.currentTarget.closest("details")?.removeAttribute("open")} rel="noopener noreferrer" target="_blank">{item.label} ↗</a> : <NavLink end={item.to === "/"} key={`${item.to}-${index}`} onClick={(event) => event.currentTarget.closest("details")?.removeAttribute("open")} to={item.to}>{item.label}</NavLink>)}</nav></details>
+    {!user && <SSOPrompt />}
+    {online !== null && <div className="online-visitors" title="近 75 秒保持连接的浏览器，同一浏览器多标签页合并统计"><span aria-hidden="true" className="online-dot" /><span><strong>{online}</strong> 人在线</span></div>}
     <SearchDialog onClose={() => setSearchOpen(false)} open={searchOpen} />
     {announcement && <div className="site-announcement" role="status"><span>刚发布{contentLabel(announcement.kind)}：</span><Link to={contentPath(announcement.kind, announcement.slug)}>{announcement.title}</Link><button aria-label="关闭新内容提醒" onClick={() => setAnnouncement(null)} type="button">×</button></div>}
     {error && <p className="site-error" role="alert">{error}</p>}

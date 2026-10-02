@@ -1,10 +1,10 @@
-import { Form, Link, useLoaderData, useRouteLoaderData } from "react-router";
+import { Link, useLoaderData, useRouteLoaderData } from "react-router";
 import { Heart, MessageCircle, PenLine } from "lucide-react";
 
 import { PostList } from "../components/post-list";
 import { SiteFooter } from "../components/site-footer";
 import { SiteHeader } from "../components/site-header";
-import { getCategories, getPosts, getPublicationStats, getRecentComments, getRecentLikes, getTimeline, getTimelineMonths } from "../lib/posts.server";
+import { getPosts, getPublicationStats, getRecentComments, getRecentLikes, getTimeline, getTimelineMonths } from "../lib/posts.server";
 import { formatDate } from "../lib/date";
 import { contentLabel, contentPath } from "../lib/content-path";
 import { commentActivityHref, commentActivityPreview, homeActivity } from "../lib/home-activity";
@@ -35,8 +35,8 @@ export function meta({ matches }: Route.MetaArgs) {
 
 export async function loader({ request }: Route.LoaderArgs) {
   const params = new URL(request.url).searchParams;
-  const [posts, categories, published, comments, likes, months, stats] = await Promise.all([getPosts(params, true), getCategories(), getTimeline(new URLSearchParams(), 6), getRecentComments().catch(() => []), getRecentLikes().catch(() => []), getTimelineMonths(), getPublicationStats().catch(() => ({ posts: 0, notes: 0, thoughts: 0, firstPublishedAt: null }))]);
-  return { posts, categories, activity: homeActivity(published.items, comments, likes), months, stats, query: params.get("q") ?? "", category: params.get("category") ?? "", tag: params.get("tag") ?? "" };
+  const [posts, published, comments, likes, months, stats] = await Promise.all([getPosts(params, true), getTimeline(new URLSearchParams(), 6), getRecentComments().catch(() => []), getRecentLikes().catch(() => []), getTimelineMonths(), getPublicationStats().catch(() => ({ posts: 0, notes: 0, thoughts: 0, firstPublishedAt: null }))]);
+  return { posts, activity: homeActivity(published.items, comments, likes), months, stats, query: params.get("q") ?? "", category: params.get("category") ?? "", tag: params.get("tag") ?? "" };
 }
 
 const destinations = [
@@ -49,13 +49,13 @@ const destinations = [
 ];
 
 export default function Home() {
-  const { posts, categories, activity, months, stats, query, category, tag } = useLoaderData<typeof loader>();
+  const { posts, activity, months, stats, query, category, tag } = useLoaderData<typeof loader>();
   const { site } = useRouteLoaderData("root") as { site: Site };
   const monthlyTotal = months.reduce((sum, month) => sum + month.count, 0);
   const showYearlineBars = months.filter((month) => month.count > 0).length > 1;
   const peak = Math.max(1, ...months.map((month) => month.count));
   const recentActivity = activity.length > 0 && <aside className="home-activity" aria-labelledby="home-activity-title">
-    <div className="section-heading"><div><p className="section-kicker">博客</p><h2 id="home-activity-title">最近动态</h2></div></div>
+    <div className="section-heading"><h2 id="home-activity-title">最近动态</h2></div>
     <ol className="home-activity-list">{activity.map((item) => {
       const content = item.type === "comment" ? <>
         <p><strong>{item.comment.authorName}</strong><span> 评论了{contentLabel(item.comment.kind)} · </span><Link to={commentActivityHref(item.comment)}>{item.comment.title}</Link></p>
@@ -79,10 +79,11 @@ export default function Home() {
       <SiteHeader />
       <main>
         <section className="hero">
-          <div className={`hero-inner${!site.avatarUrl && !activity.length ? " hero-inner-solo" : ""}`}>
+          <div className="hero-inner">
             <div className="hero-copy">
-              <p className="hero-label">你好，我是 {site.title}</p>
-              <h1>{taglinePhrases(site.tagline).map((phrase, index) => <span className="hero-phrase" key={index}>{phrase}</span>)}</h1>
+              <div className="hero-avatar">{site.avatarUrl ? <img alt={`${site.title} 的头像`} src={site.avatarUrl} /> : <span aria-hidden="true">{site.title.slice(0, 1)}</span>}</div>
+              <h1>你好，我是 <span>{site.title}</span><span className="hero-wave" aria-hidden="true"> 👋</span></h1>
+              <p className="hero-label">{taglinePhrases(site.tagline).map((phrase, index) => <span className="hero-phrase" key={index}>{phrase}</span>)}</p>
               <p className="hero-description">{site.description}</p>
               {site.statusText && <p className="hero-status"><span aria-hidden="true">{site.statusEmoji}</span><span>近况</span><strong>{site.statusText}</strong></p>}
               <div className="hero-links"><Link to="/posts">阅读文章 <span aria-hidden="true">↗</span></Link><Link to="/about">关于这个博客 <span aria-hidden="true">↗</span></Link>{site.githubUrl && <a href={site.githubUrl} rel="noopener noreferrer" target="_blank">GitHub ↗</a>}</div>
@@ -93,28 +94,15 @@ export default function Home() {
                 {stats.firstPublishedAt && <div><dt>开始于</dt><dd><time dateTime={stats.firstPublishedAt}>{formatDate(stats.firstPublishedAt, true)}</time></dd></div>}
               </dl>}
             </div>
-            {site.avatarUrl ? <div className="hero-identity"><div className="hero-avatar"><img alt={`${site.title} 的头像`} src={site.avatarUrl} /></div></div> : recentActivity}
           </div>
         </section>
-        <div className={`home-content${site.avatarUrl && activity.length ? " has-activity" : ""}`}>
+        <div className="home-content">
         <section className="content-section" aria-labelledby="latest-title">
           <div className="section-heading">
-            <div><p className="section-kicker">写作</p><h2 id="latest-title">最新文章</h2></div>
+            <h2 id="latest-title">最近写作</h2>
             <Link className="section-more" to="/posts">全部文章 ↗</Link>
           </div>
-          <Form action="/posts" className="post-search" method="get" role="search">
-            <label className="sr-only" htmlFor="post-query">搜索文章</label>
-            <input defaultValue={query} id="post-query" name="q" placeholder="搜索文章标题或摘要" type="search" />
-            <button type="submit">搜索</button>
-          </Form>
-          {categories.length > 0 && (
-            <nav aria-label="内容分类" className="category-nav">
-              <Link aria-current={!category ? "page" : undefined} to="/">全部</Link>
-              <Link className="category-nav-more" to="/topics">全部话题 ↗</Link>
-              {categories.map((item) => <Link aria-current={category === item.slug ? "page" : undefined} key={item.id} to={`/categories/${encodeURIComponent(item.slug)}`}>{item.name}</Link>)}
-            </nav>
-          )}
-          <PostList posts={posts.items} />
+          <PostList posts={posts.items} view="compact" />
           {posts.total > posts.pageSize && (
             <nav aria-label="文章分页" className="pagination">
               {posts.page > 1 && <Link to={`/?page=${posts.page - 1}${query ? `&q=${encodeURIComponent(query)}` : ""}${category ? `&category=${encodeURIComponent(category)}` : ""}${tag ? `&tag=${encodeURIComponent(tag)}` : ""}`}>← 上一页</Link>}
@@ -123,10 +111,10 @@ export default function Home() {
             </nav>
           )}
         </section>
-        {site.avatarUrl && recentActivity}
+        {recentActivity}
         </div>
         {monthlyTotal > 0 && <section aria-labelledby="home-yearline-title" className={`home-yearline${showYearlineBars ? "" : " is-sparse"}`}>
-          <div className="section-heading"><div><p className="section-kicker">过去一年</p><h2 id="home-yearline-title">发布足迹</h2></div><Link className="section-more" to="/timeline">查看时间线 ↗</Link></div>
+          <div className="section-heading"><h2 id="home-yearline-title">发布足迹</h2><Link className="section-more" to="/timeline">查看时间线 ↗</Link></div>
           <p>过去 12 个月公开了 {monthlyTotal} 条内容。</p>
           {showYearlineBars && <div className="home-yearline-scroll"><ol className="home-yearline-bars">{months.map((month) => {
             const label = `${month.month}，${month.count} 条公开内容`;
@@ -135,7 +123,7 @@ export default function Home() {
           })}</ol></div>}
         </section>}
         <nav aria-label="继续探索" className="home-explore"><div className="home-explore-inner">
-          <div className="section-heading"><div><p className="section-kicker">风向标</p><h2>继续探索</h2></div></div>
+          <div className="section-heading"><h2>在这里，也可以找到</h2></div>
           <ul>{destinations.map((item) => <li key={item.to}><Link to={item.to}><span><strong>{item.name}</strong><small>{item.detail}</small></span><span aria-hidden="true">↗</span></Link></li>)}</ul>
         </div></nav>
       </main>

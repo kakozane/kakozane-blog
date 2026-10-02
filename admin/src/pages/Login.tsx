@@ -1,8 +1,11 @@
-import { Alert, Button, Card, Form, Input, Typography } from 'antd'
+import { LockOutlined, UserOutlined } from '@ant-design/icons'
+import { LoginForm, ProFormText } from '@ant-design/pro-components'
+import { Alert } from 'antd'
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
 
 import { login } from '../api/auth'
+import { SSOPrompt } from '../components/SSOPrompt'
 import type { LoginInput } from '../types/auth'
 
 export default function Login() {
@@ -25,20 +28,16 @@ export default function Login() {
 
   return (
     <main className="login-page">
-      <Card className="login-card">
-        <Typography.Title level={3}>管理后台登录</Typography.Title>
-        <Typography.Paragraph type="secondary">使用具有管理员身份的博客账号。</Typography.Paragraph>
+      <LoginForm<LoginInput> className="login-form" title="Kakozane" subTitle="博客内容管理平台" logo={<span className="admin-brand" aria-hidden="true">K</span>}
+        contentStyle={{ width: '100%', minWidth: 0 }} onFinish={submit}
+        submitter={{ searchConfig: { submitText: '登录' }, submitButtonProps: { loading: pending, size: 'large' } }}>
+        <div className="login-method">账号密码登录</div>
+        <SSOPrompt />
         {error && <Alert className="login-error" message={error} type="error" showIcon />}
-        <Form<LoginInput> layout="vertical" onFinish={submit}>
-          <Form.Item label="账号" name="username" rules={[{ required: true, message: '请输入账号' }]}>
-            <Input autoComplete="username" maxLength={64} size="large" />
-          </Form.Item>
-          <Form.Item label="密码" name="password" rules={[{ required: true, message: '请输入密码' }]}>
-            <Input.Password autoComplete="current-password" size="large" />
-          </Form.Item>
-          <Button block htmlType="submit" loading={pending} size="large" type="primary">登录</Button>
-        </Form>
-      </Card>
+        <ProFormText label="账号" name="username" rules={[{ required: true, message: '请输入账号' }]} fieldProps={{ autoComplete: 'username', maxLength: 64, size: 'large', prefix: <UserOutlined /> }} placeholder="请输入管理员账号" />
+        <ProFormText.Password label="密码" name="password" rules={[{ required: true, message: '请输入密码' }]} fieldProps={{ autoComplete: 'current-password', size: 'large', prefix: <LockOutlined /> }} placeholder="请输入密码" />
+      </LoginForm>
+      <footer className="login-footer">© {new Date().getFullYear()} Kakozane · 管理后台</footer>
     </main>
   )
 }

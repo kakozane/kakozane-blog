@@ -91,7 +91,7 @@ func run() error {
 
 	server := &http.Server{
 		Addr:              net.JoinHostPort("", strconv.Itoa(cfg.Server.Port)),
-		Handler:           router.New(handler.NewHealthHandler(healthService), handler.NewAuthHandler(authService), handler.NewContentHandler(contentService), handler.NewUserHandler(userService), handler.NewCommentHandler(commentService), handler.NewLikeHandler(likeService, authService), handler.NewEventHandler(eventService), handler.NewFriendHandler(friendService), handler.NewProjectHandler(projectService), handler.NewPageHandler(pageService), handler.NewSayHandler(sayService), handler.NewMediaHandler(mediaService), handler.NewSiteHandler(siteService), handler.NewFeedHandler(feedService, sayService)),
+		Handler:           router.New(handler.NewHealthHandler(healthService), handler.NewAuthHandler(authService, cfg.Auth.SSOSites), handler.NewContentHandler(contentService), handler.NewUserHandler(userService), handler.NewCommentHandler(commentService), handler.NewLikeHandler(likeService, authService), handler.NewEventHandler(eventService), handler.NewFriendHandler(friendService), handler.NewProjectHandler(projectService), handler.NewPageHandler(pageService), handler.NewSayHandler(sayService), handler.NewMediaHandler(mediaService), handler.NewSiteHandler(siteService), handler.NewFeedHandler(feedService, sayService)),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 	shutdownCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)

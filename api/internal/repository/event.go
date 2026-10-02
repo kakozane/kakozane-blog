@@ -56,3 +56,18 @@ func (r *EventRepository) Subscribe(ctx context.Context) (<-chan string, func(),
 	}()
 	return messages, func() { _ = subscription.Close() }, nil
 }
+
+// A visitor may have several tabs. A shared member keeps them counted once;
+// disconnected browsers disappear after 75 seconds, without racing tab closes.
+var presenceScript = redis.NewScript(`
+local now = redis.call('TIME')
+local seconds = tonumber(now[1])
+redis.call('ZREMRANGEBYSCORE', KEYS[1], '-inf', seconds - 75)
+redis.call('ZADD', KEYS[1], seconds, ARGV[1])
+redis.call('EXPIRE', KEYS[1], 150)
+return redis.call('ZCARD', KEYS[1])
+`)
+
+func (r *EventRepository) TouchVisitor(ctx context.Context, visitor string) (int64, error) {
+	return presenceScript.Run(ctx, r.redis, []string{"blog:online-visitors"}, visitor).Int64()
+}

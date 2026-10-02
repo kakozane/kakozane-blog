@@ -166,6 +166,9 @@ importers:
 
   .:
     dependencies:
+      '@ant-design/icons':
+        specifier: 6.3.4
+        version: 6.3.4(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       '@ant-design/pro-components':
         specifier: 3.1.15-3
         version: 3.1.15-3(antd@6.6.5(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)

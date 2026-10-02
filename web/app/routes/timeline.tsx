@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link, useLoaderData } from "react-router";
 
 import { SiteFooter } from "../components/site-footer";
@@ -32,7 +33,9 @@ function href(year: string, kind: string, month = "", page = 1, featured = false
 
 export default function Timeline() {
   const { items, years, year, month, kind, featured } = useLoaderData<typeof loader>();
+  const [density, setDensity] = useState<"relaxed" | "dense" | "skim">("relaxed");
   let previousYear = "";
+  let previousMonth = "";
   return <div className="site-shell">
     <SiteHeader />
     <main className="simple-page timeline-page">
@@ -50,15 +53,20 @@ export default function Timeline() {
           {years.map((value) => <Link aria-current={year === String(value) ? "page" : undefined} key={value} to={href(String(value), kind, "", 1, featured)}>{value}</Link>)}
         </nav>
       </div>
-      <div className="timeline-list">
+      <div aria-label="时间线显示密度" className="timeline-density" role="group">{([["relaxed", "舒展"], ["dense", "紧凑"], ["skim", "速览"]] as const).map(([value, label]) => <button aria-pressed={density === value} key={value} onClick={() => setDensity(value)} type="button">{label}</button>)}</div>
+      <div className="timeline-list" data-density={density}>
         {items.items.length === 0 && <p className="empty-posts">这一时间段还没有公开内容。</p>}
         {items.items.map((item) => {
           const date = item.publishedAt ?? item.createdAt;
-          const itemYear = String(new Date(date).getFullYear());
+          const itemYear = new Date(date).toLocaleDateString("en", { year: "numeric", timeZone: "Asia/Shanghai" });
+          const itemMonth = new Date(date).toLocaleDateString("zh-CN", { month: "long", timeZone: "Asia/Shanghai" });
+          const showMonth = `${itemYear}-${itemMonth}` !== previousMonth;
+          previousMonth = `${itemYear}-${itemMonth}`;
           const showYear = itemYear !== previousYear;
           previousYear = itemYear;
           return <div key={item.id}>
             {showYear && <h2 className="timeline-year-heading">{itemYear}</h2>}
+            {showMonth && <h3 className="timeline-month-heading">{itemMonth}</h3>}
             <article className="timeline-entry">
               <time dateTime={date}>{formatDate(date, true)}</time>
               <span className="timeline-dot" aria-hidden="true" />

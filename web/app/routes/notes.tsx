@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import { Link, useLoaderData } from "react-router";
 
 import { SiteFooter } from "../components/site-footer";
@@ -28,12 +29,27 @@ export default function Notes() {
       <nav aria-label="手记筛选" className="notes-filter"><Link aria-current={!featured ? "page" : undefined} to="/notes">全部手记</Link><Link aria-current={featured ? "page" : undefined} to="/notes?featured=1">精选手记</Link></nav>
       <div className="note-list">
         {notes.items.length === 0 && <p className="empty-posts">{featured ? "还没有精选手记。" : "还没有公开的手记。"}</p>}
-        {notes.items.map((note) => <article className="note-card" key={note.id}>
-          <time dateTime={note.publishedAt ?? note.createdAt}>{formatDate(note.publishedAt ?? note.createdAt, true)}</time>{note.pinned && <span className="note-featured">精选</span>}
-          <h2><Link to={`/notes/${encodeURIComponent(note.slug)}`}>{note.title}</Link></h2>
-          {note.excerpt && <p>{note.excerpt}</p>}
-          <Link className="text-link" to={`/notes/${encodeURIComponent(note.slug)}`}>阅读手记 <span aria-hidden="true">↗</span></Link>
-        </article>)}
+        {notes.items.map((note, index) => {
+          const date = note.publishedAt ?? note.createdAt;
+          const year = new Date(date).toLocaleDateString("en", { year: "numeric", timeZone: "Asia/Shanghai" });
+          const previous = notes.items[index - 1];
+          const showYear = !previous || new Date(previous.publishedAt ?? previous.createdAt).toLocaleDateString("en", { year: "numeric", timeZone: "Asia/Shanghai" }) !== year;
+          return <Fragment key={note.id}>
+            {showYear && <h2 className="notes-year">{year}<span>LETTERS</span></h2>}
+            <article className={`note-card${index === 0 && notes.page === 1 ? " note-latest" : ""}`}>
+              <time className="note-date" dateTime={date}>{formatDate(date, true)}</time>
+              <div className="note-paper">
+                {note.coverUrl && <Link to={`/notes/${encodeURIComponent(note.slug)}`} className="note-cover"><img alt="" loading="lazy" src={note.coverUrl} /></Link>}
+                <div className="note-paper-copy">
+                  <div className="note-caption"><span>{note.categoryName || "日常手记"}</span>{note.pinned && <span className="note-featured">精选</span>}</div>
+                  <h2><Link to={`/notes/${encodeURIComponent(note.slug)}`}>{note.title}</Link></h2>
+                  {note.excerpt && <p>{note.excerpt}</p>}
+                  <div className="note-paper-footer"><span>随笔 · {year}</span><Link className="text-link" to={`/notes/${encodeURIComponent(note.slug)}`}>展开这封手记 ↗</Link></div>
+                </div>
+              </div>
+            </article>
+          </Fragment>;
+        })}
       </div>
       {notes.total > notes.pageSize && <nav aria-label="手记分页" className="pagination">
         {notes.page > 1 && <Link to={`/notes?page=${notes.page - 1}${featured ? "&featured=1" : ""}`}>← 上一页</Link>}

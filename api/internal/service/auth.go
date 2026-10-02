@@ -22,6 +22,7 @@ var (
 	ErrInvalidCredentials = errors.New("invalid credentials")
 	ErrRateLimited        = errors.New("too many login attempts")
 	ErrUnauthenticated    = errors.New("not authenticated")
+	ErrForbidden          = errors.New("permission denied")
 )
 
 type AuthService struct {
@@ -54,18 +55,33 @@ func (s *AuthService) Login(ctx context.Context, username, secret, scope string)
 		}
 		return repository.User{}, "", ErrInvalidCredentials
 	}
-	random := make([]byte, 32)
-	if _, err := rand.Read(random); err != nil {
-		return repository.User{}, "", err
-	}
-	token := base64.RawURLEncoding.EncodeToString(random)
-	if err := s.repo.SaveSession(ctx, scope, token, user.ID, user.SessionVersion); err != nil {
+	token, err := s.newSession(ctx, scope, user)
+	if err != nil {
 		return repository.User{}, "", err
 	}
 	if err := s.repo.ClearFailedLogins(ctx, username); err != nil {
 		return repository.User{}, "", err
 	}
 	return user, token, nil
+}
+
+func randomAuthToken() (string, error) {
+	random := make([]byte, 32)
+	if _, err := rand.Read(random); err != nil {
+		return "", err
+	}
+	return base64.RawURLEncoding.EncodeToString(random), nil
+}
+
+func (s *AuthService) newSession(ctx context.Context, scope string, user repository.User) (string, error) {
+	token, err := randomAuthToken()
+	if err != nil {
+		return "", err
+	}
+	if err := s.repo.SaveSession(ctx, scope, token, user.ID, user.SessionVersion); err != nil {
+		return "", err
+	}
+	return token, nil
 }
 
 func (s *AuthService) CurrentUser(ctx context.Context, scope, token string) (repository.User, error) {

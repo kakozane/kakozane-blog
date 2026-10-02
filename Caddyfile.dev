@@ -1,10 +1,10 @@
-localhost:6324 {
+localhost:6324, api.dev.kakozane.icu {
 	# 开发入口仍使用 HTTPS，登录 Cookie 和同源校验可正常工作。
 	tls internal
 	reverse_proxy api:6324
 }
 
-localhost:6325 {
+localhost:6325, dev.kakozane.icu {
 	tls internal
 	@discovery path /sitemap.xml /feed.xml /notes/feed.xml /thinking/feed.xml /says/feed.xml /robots.txt
 	handle @discovery {
@@ -24,7 +24,7 @@ localhost:6325 {
 	}
 }
 
-localhost:6326 {
+localhost:6326, admin.dev.kakozane.icu {
 	tls internal
 	handle /api/* {
 		reverse_proxy api:6324

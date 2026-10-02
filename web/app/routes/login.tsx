@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router";
 
 import { login } from "../lib/auth";
+import { SSOPrompt } from "../components/sso-prompt";
 import { authPagePath, safeReturnPath } from "../lib/auth-return";
 import type { Route } from "./+types/login";
 
@@ -39,6 +40,7 @@ export default function Login() {
         <Link className="auth-back" to={next}>← 返回博客</Link>
         <h1>登录</h1>
         <p className="auth-intro">使用博客账号继续阅读和参与讨论。</p>
+        <SSOPrompt returnTo={next} />
         <form className="auth-form" onSubmit={submit}>
           <div className="auth-field"><label htmlFor="username">账号</label><input autoComplete="username" id="username" maxLength={64} name="username" required /></div>
           <div className="auth-field"><label htmlFor="password">密码</label><input autoComplete="current-password" id="password" name="password" required type="password" /></div>

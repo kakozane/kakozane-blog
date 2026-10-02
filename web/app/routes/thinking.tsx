@@ -27,7 +27,7 @@ export default function Thinking() {
       <div className="thinking-list">
         {thoughts.items.length === 0 && <p className="empty-posts">还没有公开的思考。</p>}
         {thoughts.items.map((thought) => <article className="thinking-entry" key={thought.id}>
-          <time dateTime={thought.publishedAt ?? thought.createdAt}>{formatDate(thought.publishedAt ?? thought.createdAt, true)}</time>
+          <div className="thinking-author"><span className="thinking-avatar" aria-hidden="true">{thought.authorName.slice(0, 1)}</span><strong>{thought.authorName}</strong><time dateTime={thought.publishedAt ?? thought.createdAt}>{formatDate(thought.publishedAt ?? thought.createdAt, true)}</time></div>
           <div className="thinking-body"><ReactMarkdown remarkPlugins={[remarkGfm, remarkAlert]}>{thought.contentMd}</ReactMarkdown></div>
           <Link className="text-link" to={contentPath("thought", thought.slug)}>查看评论与点赞 ↗</Link>
         </article>)}

@@ -3,7 +3,7 @@ import { Form, Link, useLoaderData } from "react-router";
 import { PostList } from "../components/post-list";
 import { SiteFooter } from "../components/site-footer";
 import { SiteHeader } from "../components/site-header";
-import { getPosts } from "../lib/posts.server";
+import { getPosts, getTags } from "../lib/posts.server";
 import { postSort, postView, postsHref } from "../lib/posts-options";
 import type { Route } from "./+types/posts";
 
@@ -28,21 +28,24 @@ export async function loader({ request }: Route.LoaderArgs) {
   const params = new URLSearchParams({ page: String(page), pageSize: "12" });
   if (query) params.set("q", query);
   if (sort !== "newest") params.set("sort", sort);
-  return { posts: await getPosts(params), query, view, sort };
+  const [posts, tags] = await Promise.all([getPosts(params), getTags()]);
+  return { posts, tags, query, view, sort };
 }
 
 export default function Posts() {
-  const { posts, query, view, sort } = useLoaderData<typeof loader>();
+  const { posts, tags, query, view, sort } = useLoaderData<typeof loader>();
   const href = (page: number, mode = view, order = sort) => postsHref(page, query, mode, order);
 
   return <div className="site-shell">
     <SiteHeader />
     <main className="simple-page posts-index">
-      <div className="page-intro">
+      <header className="posts-heading">
+        <span className="page-eyebrow">BLOG</span>
         <h1>文章</h1>
-        <p>完整的写作与技术实践。</p>
-        <nav aria-label="浏览文章" className="page-intro-links"><Link to="/archive">按时间查看归档 ↗</Link><Link to="/topics">按话题浏览 ↗</Link></nav>
-      </div>
+        <p>写作、记录，与技术实践。</p>
+      </header>
+      <div className="posts-layout">
+      <aside aria-label="文章检索" className="posts-sidebar">
       <Form className="post-search" method="get" role="search">
         <label className="sr-only" htmlFor="article-query">搜索文章</label>
         <input defaultValue={query} id="article-query" maxLength={100} name="q" placeholder="搜索文章标题或摘要" type="search" />
@@ -50,6 +53,10 @@ export default function Posts() {
         {sort !== "newest" && <input name="sort" type="hidden" value={sort} />}
         <button type="submit">搜索</button>
       </Form>
+      <div className="posts-sidebar-section"><h2>话题</h2>{tags.length ? <div className="posts-tag-links">{tags.slice(0, 12).map((tag) => <Link key={tag.id} to={`/tags/${encodeURIComponent(tag.slug)}`}>{tag.name}</Link>)}</div> : <p>话题会随着写作慢慢积累。</p>}<Link className="posts-all-topics" to="/topics">全部话题 ↗</Link></div>
+      <nav aria-label="浏览文章" className="posts-sidebar-links"><Link to="/archive">时间归档 ↗</Link><Link to="/subscribe">订阅更新 ↗</Link></nav>
+      </aside>
+      <section aria-label="文章列表" className="posts-results">
       <div className="posts-toolbar"><p className="posts-summary">{query ? `“${query}”找到 ${posts.total} 篇文章` : `共 ${posts.total} 篇文章`}</p><div className="posts-options"><nav aria-label="文章排序方式" className="posts-sort"><Link aria-current={sort === "newest" ? "page" : undefined} to={href(1, view, "newest")}>最新</Link><Link aria-current={sort === "oldest" ? "page" : undefined} to={href(1, view, "oldest")}>最早</Link><Link aria-current={sort === "updated" ? "page" : undefined} to={href(1, view, "updated")}>最近更新</Link></nav><nav aria-label="文章显示方式" className="posts-view"><Link aria-current={view === "preview" ? "page" : undefined} to={href(posts.page, "preview")}>摘要</Link><Link aria-current={view === "compact" ? "page" : undefined} to={href(posts.page, "compact")}>紧凑</Link></nav></div></div>
       <h2 className="sr-only">文章列表</h2>
       {posts.items.length ? <PostList posts={posts.items} view={view} /> : <p className="empty-posts">{query ? "没有找到匹配的文章。" : "还没有公开的文章。"}</p>}
@@ -58,6 +65,8 @@ export default function Posts() {
         <span>第 {posts.page} 页</span>
         {posts.page * posts.pageSize < posts.total && <Link to={href(posts.page + 1)}>下一页 →</Link>}
       </nav>}
+      </section>
+      </div>
     </main>
     <SiteFooter />
   </div>;

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/kakozane/kakozane-blog/api/internal/config"
 	"github.com/kakozane/kakozane-blog/api/internal/repository"
 	"github.com/kakozane/kakozane-blog/api/internal/service"
 )
@@ -17,7 +18,8 @@ const (
 )
 
 type AuthHandler struct {
-	service *service.AuthService
+	service  *service.AuthService
+	ssoSites []config.SSOSite
 }
 
 type loginRequest struct {
@@ -25,8 +27,8 @@ type loginRequest struct {
 	Password string `json:"password"`
 }
 
-func NewAuthHandler(authService *service.AuthService) *AuthHandler {
-	return &AuthHandler{service: authService}
+func NewAuthHandler(authService *service.AuthService, sites []config.SSOSite) *AuthHandler {
+	return &AuthHandler{service: authService, ssoSites: sites}
 }
 
 func (h *AuthHandler) FrontLogin(c *gin.Context)  { h.login(c, service.ScopeFront) }

@@ -8,6 +8,7 @@ export default defineConfig({
   server: {
     port: 6326,
     strictPort: true,
+    allowedHosts: ['admin.dev.kakozane.icu'],
     proxy: { '/api': 'http://localhost:6324' },
   },
 })

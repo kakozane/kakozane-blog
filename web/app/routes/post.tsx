@@ -60,7 +60,7 @@ export default function Post() {
   const savedBucket = useRef<number | null>(null);
   const completedReading = useRef(false);
   const readingKey = `blog-reading:${post.kind}:${post.id}`;
-  const [readingFont, setReadingFont] = useState<"sans" | "serif">("sans");
+  const [readingFont, setReadingFont] = useState<"sans" | "serif">(post.kind === "note" ? "serif" : "sans");
   const [readingSize, setReadingSize] = useState<0 | 1 | 2>(0);
   const [focusPostID, setFocusPostID] = useState<number | null>(null);
   const focusReading = focusPostID === post.id;
@@ -135,10 +135,11 @@ export default function Post() {
 
   useEffect(() => {
     try {
-      if (window.localStorage.getItem("blog-reading-font") === "serif") setReadingFont("serif");
+      const savedFont = window.localStorage.getItem("blog-reading-font");
+      setReadingFont(savedFont === "sans" || savedFont === "serif" ? savedFont : post.kind === "note" ? "serif" : "sans");
       setReadingSize(savedReadingSize(window.localStorage.getItem("blog-reading-size")));
     } catch { /* 无法使用本地存储时仍可在当前页面切换。 */ }
-  }, []);
+  }, [post.kind]);
 
   useEffect(() => {
     savedBucket.current = null;
@@ -286,12 +287,12 @@ export default function Post() {
     } finally { setSubmitting(false); }
   }
   return (
-    <div className="site-shell article-shell" data-focus-reading={focusReading}>
+    <div className="site-shell article-shell" data-focus-reading={focusReading} data-content-kind={post.kind}>
       <script dangerouslySetInnerHTML={{ __html: jsonLd(postingData(post, site)) }} type="application/ld+json" />
       {post.kind !== "thought" && <div aria-label="阅读进度" aria-valuemax={100} aria-valuemin={0} aria-valuenow={readingProgress} className="reading-progress" role="progressbar"><span style={{ width: `${readingProgress}%` }} /></div>}
       <SiteHeader />
       <main className="article-page">
-        <Link className="back-link" to={contentListPath(post.kind)}>← 返回{contentLabel(post.kind)}列表</Link>
+        <header className="article-heading"><Link className="back-link" to={contentListPath(post.kind)}>← 返回{contentLabel(post.kind)}列表</Link>
         <div className="post-meta">
           <time dateTime={post.publishedAt ?? post.createdAt}>{formatDate(post.publishedAt ?? post.createdAt, true)}</time>
           <span>·</span><span>{post.authorName}</span>
@@ -303,6 +304,7 @@ export default function Post() {
         <h1 className={post.kind === "thought" ? "sr-only" : undefined}>{post.title}</h1>
         {resumeProgress !== null && <button className="resume-reading" onClick={resumeReading} type="button">从上次的 {resumeProgress}% 继续阅读 ↗</button>}
         {post.kind !== "thought" && post.excerpt && <p className="article-lead">{post.excerpt}</p>}
+        </header>
         {post.coverUrl && <img alt="" className="article-cover" src={post.coverUrl} />}
         <ArticleToc activeHeading={activeHeading} headings={headings} label="文章" />
         <div aria-label="阅读设置" className="article-reading-tools" role="group"><span>字体</span><button aria-pressed={readingFont === "sans"} className="font-choice" onClick={() => chooseReadingFont("sans")} type="button">默认</button><button aria-pressed={readingFont === "serif"} className="font-choice" onClick={() => chooseReadingFont("serif")} type="button">衬线</button><span aria-live="polite" className="reading-size-label">字号 · {(["标准", "较大", "最大"] as const)[readingSize]}</span><button aria-label="缩小正文字号" className="size-choice" disabled={readingSize === 0} onClick={() => changeReadingSize(readingSize === 2 ? 1 : 0)} type="button">A−</button><button aria-label="放大正文字号" className="size-choice" disabled={readingSize === 2} onClick={() => changeReadingSize(readingSize === 0 ? 1 : 2)} type="button">A+</button>{post.kind !== "thought" && <button aria-pressed={focusReading} className="focus-choice" onClick={toggleFocusReading} type="button">{focusReading ? "退出沉浸" : "沉浸阅读"}</button>}</div>

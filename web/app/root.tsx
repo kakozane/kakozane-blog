@@ -12,6 +12,8 @@ import {
 
 import type { Route } from "./+types/root";
 import "./app.css";
+import "./editorial.css";
+import { PageMotion } from "./components/page-motion";
 import { frontUser } from "./lib/auth.server";
 import { getSite } from "./lib/site.server";
 import { sectionMeta } from "./lib/section-meta";
@@ -60,7 +62,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
-  return <Outlet />;
+  return <><Outlet /><PageMotion /></>;
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {

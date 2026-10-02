@@ -3,6 +3,7 @@ package router
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/kakozane/kakozane-blog/api/internal/handler"
+	"github.com/kakozane/kakozane-blog/api/internal/service"
 )
 
 func New(healthHandler *handler.HealthHandler, authHandler *handler.AuthHandler, contentHandler *handler.ContentHandler, userHandler *handler.UserHandler, commentHandler *handler.CommentHandler, likeHandler *handler.LikeHandler, eventHandler *handler.EventHandler, friendHandler *handler.FriendHandler, projectHandler *handler.ProjectHandler, pageHandler *handler.PageHandler, sayHandler *handler.SayHandler, mediaHandler *handler.MediaHandler, siteHandler *handler.SiteHandler, feedHandler *handler.FeedHandler) *gin.Engine {
@@ -20,6 +21,7 @@ func New(healthHandler *handler.HealthHandler, authHandler *handler.AuthHandler,
 	api.GET("/activity/likes", likeHandler.RecentPublic)
 	api.GET("/site/stats", contentHandler.PublicationStats)
 	auth := api.Group("/auth")
+	authHandler.RegisterSSO(auth, service.ScopeFront)
 	auth.POST("/login", authHandler.FrontLogin)
 	auth.POST("/register", userHandler.Register)
 	auth.GET("/me", authHandler.FrontMe)
@@ -77,6 +79,7 @@ func New(healthHandler *handler.HealthHandler, authHandler *handler.AuthHandler,
 	api.GET("/pages/:slug", pageHandler.PublicGet)
 	api.GET("/says", sayHandler.PublicList)
 	adminAuth := api.Group("/admin/auth")
+	authHandler.RegisterSSO(adminAuth, service.ScopeAdmin)
 	adminAuth.POST("/login", authHandler.AdminLogin)
 	adminAuth.GET("/me", authHandler.AdminMe)
 	adminAuth.POST("/logout", authHandler.AdminLogout)

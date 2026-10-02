@@ -24,3 +24,7 @@ func (s *EventService) PublishSite(ctx context.Context) error {
 func (s *EventService) Subscribe(ctx context.Context) (<-chan string, func(), error) {
 	return s.repo.Subscribe(ctx)
 }
+
+func (s *EventService) TouchVisitor(ctx context.Context, visitor string) (int64, error) {
+	return s.repo.TouchVisitor(ctx, visitor)
+}

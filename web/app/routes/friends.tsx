@@ -14,7 +14,7 @@ function LinkGroup({ title, items }: { title: string; items: FriendLink[] }) {
   return <section className="friends-group">
     <h2>{title}</h2>
     <div className="friends-list">{items.map((item) => <a className="external-link" href={item.url} key={item.id} rel="noopener noreferrer" target="_blank">
-      {item.avatarUrl && <img alt="" height="44" loading="lazy" src={item.avatarUrl} width="44" />}
+      {item.avatarUrl ? <img alt="" height="44" loading="lazy" src={item.avatarUrl} width="44" /> : <span className="friend-initial" aria-hidden="true">{item.name.slice(0, 1)}</span>}
       <span className="external-link-copy"><strong>{item.name}</strong>{item.description && <small>{item.description}</small>}</span>
       <span aria-hidden="true" className="external-link-arrow">↗</span>
     </a>)}</div>
