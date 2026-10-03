@@ -6,6 +6,8 @@ export function PageMotion() {
   const { pathname } = useLocation();
   useEffect(() => {
     if (matchMedia("(prefers-reduced-motion: reduce)").matches || !window.IntersectionObserver) return;
+    const key = `blog-visited:${pathname}`;
+    try { if (sessionStorage.getItem(key)) return; sessionStorage.setItem(key, "1"); } catch { /* Private storage may be unavailable. */ }
     const animations: Animation[] = [];
     const observer = new IntersectionObserver((entries) => {
       for (const entry of entries) {

@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import { useEffect, useState } from "react";
 import { Link, NavLink, useLocation, useRevalidator, useRouteLoaderData } from "react-router";
 
@@ -35,6 +36,8 @@ export function SiteHeader() {
   const location = useLocation();
   const { user, site } = useRouteLoaderData("root") as { user: PublicUser | null; site: Site };
   const { revalidate } = useRevalidator();
+  const [footer, setFooter] = useState<HTMLElement | null>(null);
+  useEffect(() => { setFooter(document.getElementById("footer-presence")); }, []);
   const [online, setOnline] = useState<number | null>(null);
   const [error, setError] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
@@ -113,13 +116,13 @@ export function SiteHeader() {
         {primaryNavItems.map((item) => <NavLink end={item.to === "/"} key={item.to} to={item.to}>{item.label}</NavLink>)}
         <details className="site-nav-more"><summary aria-current={moreActive ? "page" : undefined}>更多</summary><div className="site-nav-more-panel">{moreItems.map((item, index) => item.to.startsWith("https://") ? <a href={item.to} key={`${item.to}-${index}`} onClick={(event) => event.currentTarget.closest("details")?.removeAttribute("open")} rel="noopener noreferrer" target="_blank">{item.label} ↗</a> : <NavLink key={`${item.to}-${index}`} onClick={(event) => event.currentTarget.closest("details")?.removeAttribute("open")} to={item.to}>{item.label}</NavLink>)}</div></details>
       </nav>
-      <div className="site-actions"><button aria-keyshortcuts="Meta+K Control+K" aria-label="快速搜索" className="site-search-trigger" onClick={() => setSearchOpen(true)} title="快速搜索（⌘K / Ctrl+K）" type="button"><svg aria-hidden="true" fill="none" height="18" stroke="currentColor" strokeLinecap="round" strokeWidth="1.8" viewBox="0 0 24 24" width="18"><circle cx="10.8" cy="10.8" r="6.8" /><path d="m16 16 4.5 4.5" /></svg></button><ThemeSwitch />{user ? <button className="site-login" onClick={signOut} type="button">退出</button> : <Link className="site-login" to={authPagePath("login", `${location.pathname}${location.search}${location.hash}`)}>登录</Link>}
+      <div className="site-actions"><button aria-keyshortcuts="Meta+K Control+K" aria-label="快速搜索" className="site-search-trigger" onClick={() => setSearchOpen(true)} title="快速搜索（⌘K / Ctrl+K）" type="button"><svg aria-hidden="true" fill="none" height="18" stroke="currentColor" strokeLinecap="round" strokeWidth="1.8" viewBox="0 0 24 24" width="18"><circle cx="10.8" cy="10.8" r="6.8" /><path d="m16 16 4.5 4.5" /></svg></button><ThemeSwitch />{user ? <button className="site-login" onClick={signOut} type="button">退出</button> : <Link className="site-login" preventScrollReset to={authPagePath("login", `${location.pathname}${location.search}${location.hash}`)}>登录</Link>}
 
       </div>
     </header>
         <details className="site-menu"><summary><span className="mobile-site-name">{site.title}</span><span>菜单 ☰</span></summary><nav aria-label="小屏导航" className="site-menu-panel">{links.map((item, index) => item.to.startsWith("https://") ? <a href={item.to} key={`${item.to}-${index}`} onClick={(event) => event.currentTarget.closest("details")?.removeAttribute("open")} rel="noopener noreferrer" target="_blank">{item.label} ↗</a> : <NavLink end={item.to === "/"} key={`${item.to}-${index}`} onClick={(event) => event.currentTarget.closest("details")?.removeAttribute("open")} to={item.to}>{item.label}</NavLink>)}</nav></details>
     {!user && <SSOPrompt />}
-    {online !== null && <div className="online-visitors" title="近 75 秒保持连接的浏览器，同一浏览器多标签页合并统计"><span aria-hidden="true" className="online-dot" /><span><strong>{online}</strong> 人在线</span></div>}
+    {footer && online !== null && createPortal(<div className="online-visitors" title="近 75 秒保持连接的浏览器，同一浏览器多标签页合并统计"><span aria-hidden="true" className="online-dot" /><span><strong>{online}</strong> 人在线</span></div>, footer)}
     <SearchDialog onClose={() => setSearchOpen(false)} open={searchOpen} />
     {announcement && <div className="site-announcement" role="status"><span>刚发布{contentLabel(announcement.kind)}：</span><Link to={contentPath(announcement.kind, announcement.slug)}>{announcement.title}</Link><button aria-label="关闭新内容提醒" onClick={() => setAnnouncement(null)} type="button">×</button></div>}
     {error && <p className="site-error" role="alert">{error}</p>}

@@ -1,12 +1,10 @@
 import { Alert, Button, Card, Form, Input, Modal, Select, Space, Switch, Typography, message } from 'antd'
-import { useEffect, useRef, useState } from 'react'
-import type { TextAreaRef } from 'antd/es/input/TextArea'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams, useRouteLoaderData } from 'react-router'
 import { getPost, listTerms, savePost } from '../api/content'
 import UnsavedChangesDialog from '../components/UnsavedChangesDialog'
-import MarkdownImageUpload from '../components/MarkdownImageUpload'
+import RichTextEditor from '../components/RichTextEditor'
 import MarkdownPreview from '../components/MarkdownPreview'
-import MarkdownToolbar from '../components/MarkdownToolbar'
 import { openFrontPreview } from '../lib/front-preview'
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges'
 import { useDraftBackup } from '../hooks/useDraftBackup'
@@ -23,7 +21,6 @@ export default function PostEditor({ kind }: { kind: 'post' | 'note' }) {
   const admin = useRouteLoaderData('admin') as AdminUser
   const navigate = useNavigate()
   const [form] = Form.useForm<PostInput>()
-  const editorRef = useRef<TextAreaRef>(null)
   const preview = Form.useWatch('contentMd', form) ?? ''
   const [categories, setCategories] = useState<Term[]>([])
   const [tags, setTags] = useState<Term[]>([])
@@ -97,16 +94,14 @@ export default function PostEditor({ kind }: { kind: 'post' | 'note' }) {
 
   return (
     <section className="admin-page admin-editor">
-      <div className="admin-page-heading"><div><Typography.Title level={2}>{postId ? `编辑${label}` : `写${label}`}</Typography.Title><Typography.Text type="secondary">正文使用 Markdown，发布后在博客前台展示</Typography.Text></div><Button onClick={() => navigate(base)}>返回列表</Button></div>
+      <div className="admin-page-heading"><div><Typography.Title level={2}>{postId ? `编辑${label}` : `写${label}`}</Typography.Title><Typography.Text type="secondary">使用富文本编辑正文，支持 Markdown 源码与前台预览</Typography.Text></div><Button onClick={() => navigate(base)}>返回列表</Button></div>
       <Card loading={loading}>
         {backup.error && <Alert message={backup.error} showIcon type="warning" />}
         <Form<PostInput> form={form} initialValues={{ ...emptyPost, kind }} layout="vertical" onFinish={(input) => void submit(input)} onValuesChange={queueDraft}>
           <Form.Item label="标题" name="title" rules={[{ required: true, message: `请输入${label}标题` }, { max: 240 }]}><Input maxLength={240} placeholder={`${label}标题`} size="large" /></Form.Item>
           <Form.Item extra="网址中使用的简短名称，可用中英文、数字和连字符" label={`${label}链接`} name="slug" rules={[{ required: true, message: `请输入${label}链接` }, { pattern: /^[\p{L}\p{N}]+(?:-[\p{L}\p{N}]+)*$/u, message: '只能使用文字、数字和连字符' }]}><Input maxLength={160} placeholder="例如 my-first-post" /></Form.Item>
           <Form.Item label="摘要" name="excerpt" rules={[{ max: 500 }]}><Input.TextArea maxLength={500} placeholder={`用于${label}列表和搜索摘要`} rows={3} showCount /></Form.Item>
-          <MarkdownToolbar editorRef={editorRef} form={form} onDirty={queueDraft} />
-          <Form.Item extra="提示块可写为 > [!NOTE]、> [!TIP]、> [!WARNING] 等，下一行继续以 > 开头" label="正文（Markdown）" name="contentMd"><Input.TextArea className="markdown-editor" placeholder="开始写作，支持表格、代码块、Mermaid 图表、LaTeX 公式和提示块" ref={editorRef} rows={18} /></Form.Item>
-          <MarkdownImageUpload editorRef={editorRef} form={form} onDirty={queueDraft} onUploadingChange={setUploadingImage} uploading={uploadingImage} />
+          <Form.Item label="正文" name="contentMd"><RichTextEditor onUploadingChange={setUploadingImage} /></Form.Item>
           <Card className="markdown-preview" size="small" title="正文预览"><MarkdownPreview value={preview} /></Card>
           <Form.Item extra={<span>可在 <Link to="/media">媒体库</Link> 上传后复制图片地址</span>} label="封面图片地址" name="coverUrl" rules={[{ pattern: /^(https:\/\/\S+|\/(?!\/)\S+)?$/, message: '使用 HTTPS 地址或站内路径' }]}><Input maxLength={1024} placeholder="https://... 或 /uploads/..." /></Form.Item>
           <Space className="editor-selects" size="large" wrap>

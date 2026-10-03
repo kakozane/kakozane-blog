@@ -11,8 +11,10 @@ import {
 } from "react-router";
 
 import type { Route } from "./+types/root";
+import "./yohaku-tokens.css";
 import "./app.css";
 import "./editorial.css";
+import { AuthDialog } from "./components/auth-dialog";
 import { PageMotion } from "./components/page-motion";
 import { frontUser } from "./lib/auth.server";
 import { getSite } from "./lib/site.server";
@@ -62,7 +64,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
-  return <><Outlet /><PageMotion /></>;
+  return <><Outlet /><AuthDialog /><PageMotion /></>;
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {

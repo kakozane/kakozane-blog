@@ -39,8 +39,6 @@ body {
 .dashboard-quick-links a:hover { background: #f0f7ff; color: #1677ff; }
 .dashboard-latest { overflow-x: auto; }
 .markdown-editor { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, monospace; line-height: 1.7; }
-.markdown-image-upload { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: -8px 0 24px; }
-.markdown-image-upload span { color: #86868b; font-size: 12px; }
 .markdown-preview { margin-bottom: 24px; overflow-wrap: anywhere; }
 .markdown-preview img { max-width: 100%; height: auto; }
 .markdown-preview pre { overflow-x: auto; }
@@ -86,4 +84,22 @@ body {
 @media (max-width: 700px) { .dashboard-grid { grid-template-columns: 1fr; } .admin-page-heading { align-items: flex-start; flex-direction: column; } }
 @media (max-width: 600px) { .setting-nav-row { grid-template-columns: 1fr auto; } .setting-nav-row .ant-form-item:nth-child(2) { grid-column: 1; } .setting-nav-remove { grid-column: 2; grid-row: 1; } }
 
-.markdown-toolbar { margin-bottom: 12px; padding: 10px; border: 1px solid #e8e8ed; border-radius: 8px; background: #fafafa; }
+
+.rich-editor { border: 1px solid #d9d9d9; border-radius: 8px; overflow: hidden; }
+.rich-editor-toolbar { display: grid; gap: 8px; padding: 10px; border-bottom: 1px solid #eee; background: #fafafa; }
+.rich-editor-toolbar > input { max-width: 220px; }
+.rich-editor-content { min-height: 360px; padding: 20px 24px; outline: none; line-height: 1.8; overflow-wrap: anywhere; }
+.rich-editor-content > :first-child { margin-top: 0; }
+.rich-editor-content pre { padding: 16px; background: #f5f5f5; border-radius: 6px; overflow: auto; }
+.rich-editor-content code { font-family: monospace; }
+.rich-editor-content blockquote { margin-left: 0; padding-left: 16px; border-left: 3px solid #d9d9d9; color: #555; }
+.rich-editor-content img { max-width: 100%; height: auto; }
+.rich-editor-content table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.rich-editor-content td, .rich-editor-content th { border: 1px solid #d9d9d9; padding: 6px 10px; position: relative; vertical-align: top; }
+.rich-editor-content .selectedCell { background: #e6f4ff; }
+.rich-editor-content ul[data-type="taskList"] { list-style: none; padding-left: 0; }
+.rich-editor-content ul[data-type="taskList"] li { display: flex; align-items: baseline; gap: 8px; }
+.rich-editor-content li > div { flex: 1; }
+.rich-editor-content li p { margin: 4px 0; }
+.rich-editor-content .ProseMirror-selectednode { outline: 2px solid #1677ff; }
+.rich-editor-status { padding: 8px 12px; border-top: 1px solid #eee; color: #666; font-size: 12px; }

@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { Link, useSearchParams } from "react-router";
+import { Link, redirect } from "react-router";
 
 import { login } from "../lib/auth";
 import { SSOPrompt } from "../components/sso-prompt";
@@ -10,9 +10,11 @@ export function meta({ matches }: Route.MetaArgs) {
   return [{ title: `登录 · ${matches[0].loaderData.site.title}` }];
 }
 
-export default function Login() {
-  const [search] = useSearchParams();
-  const next = safeReturnPath(search.get("next"));
+export function loader({ request }: Route.LoaderArgs) {
+  return redirect(authPagePath("login", safeReturnPath(new URL(request.url).searchParams.get("next"))));
+}
+
+export default function AuthForm({ next = "/" }: { next?: string }) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
 
@@ -35,10 +37,9 @@ export default function Login() {
   }
 
   return (
-    <main className="auth-page">
+    <div>
       <div className="auth-panel">
-        <Link className="auth-back" to={next}>← 返回博客</Link>
-        <h1>登录</h1>
+        <h1 id="auth-dialog-title">登录</h1>
         <p className="auth-intro">使用博客账号继续阅读和参与讨论。</p>
         <SSOPrompt returnTo={next} />
         <form className="auth-form" onSubmit={submit}>
@@ -47,8 +48,8 @@ export default function Login() {
           {error && <p className="auth-error" role="alert">{error}</p>}
           <button className="auth-submit" disabled={pending} type="submit">{pending ? "登录中…" : "登录"}</button>
         </form>
-        <p className="auth-switch">还没有账号？<Link to={search.has("next") ? authPagePath("register", next) : "/register"}>注册账号</Link></p>
+        <p className="auth-switch">还没有账号？<Link preventScrollReset replace to={authPagePath("register", next)}>注册账号</Link></p>
       </div>
-    </main>
+    </div>
   );
 }

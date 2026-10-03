@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { Link, useSearchParams } from "react-router";
+import { Link, redirect } from "react-router";
 
 import { login, register } from "../lib/auth";
 import { authPagePath, safeReturnPath } from "../lib/auth-return";
@@ -7,9 +7,11 @@ import type { Route } from "./+types/register";
 
 export function meta({ matches }: Route.MetaArgs) { return [{ title: `注册 · ${matches[0].loaderData.site.title}` }]; }
 
-export default function Register() {
-  const [search] = useSearchParams();
-  const next = safeReturnPath(search.get("next"), "/account");
+export function loader({ request }: Route.LoaderArgs) {
+  return redirect(authPagePath("register", safeReturnPath(new URL(request.url).searchParams.get("next"))));
+}
+
+export default function AuthForm({ next = "/" }: { next?: string }) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
 
@@ -31,10 +33,9 @@ export default function Register() {
   }
 
   return (
-    <main className="auth-page">
+    <div>
       <div className="auth-panel">
-        <Link className="auth-back" to={search.has("next") ? safeReturnPath(search.get("next")) : "/"}>← 返回博客</Link>
-        <h1>创建账号</h1>
+        <h1 id="auth-dialog-title">创建账号</h1>
         <p className="auth-intro">注册后可以参与讨论。评论发布前会经过审核。</p>
         <form className="auth-form" onSubmit={submit}>
           <div className="auth-field"><label htmlFor="username">账号</label><input autoComplete="username" id="username" maxLength={64} minLength={3} name="username" pattern="[a-z0-9_]+" required /></div>
@@ -44,8 +45,8 @@ export default function Register() {
           {error && <p className="auth-error" role="alert">{error}</p>}
           <button className="auth-submit" disabled={pending} type="submit">{pending ? "注册中…" : "注册并登录"}</button>
         </form>
-        <p className="auth-switch">已有账号？<Link to={search.has("next") ? authPagePath("login", next) : "/login"}>去登录</Link></p>
+        <p className="auth-switch">已有账号？<Link preventScrollReset replace to={authPagePath("login", next)}>去登录</Link></p>
       </div>
-    </main>
+    </div>
   );
 }

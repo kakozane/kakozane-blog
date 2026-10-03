@@ -38,19 +38,21 @@ export function CodeBlock({ children }: { children: ReactNode }) {
     setDiagram("");
     setDiagramError(false);
     void import("mermaid").then(async ({ default: mermaid }) => {
+      const style = getComputedStyle(document.documentElement);
+      const token = (name: string) => style.getPropertyValue(name).trim();
       mermaid.initialize({
         startOnLoad: false, securityLevel: "strict", suppressErrorRendering: true,
         theme: "base", look: "classic",
         themeVariables: {
           darkMode: dark,
-          background: dark ? "#111113" : "#ffffff",
-          primaryColor: dark ? "#1c1c1e" : "#f5f5f7",
-          primaryTextColor: dark ? "#f5f5f7" : "#1d1d1f",
-          primaryBorderColor: dark ? "#2997ff" : "#0066cc",
-          secondaryColor: dark ? "#252528" : "#e8e8ed",
-          tertiaryColor: dark ? "#111113" : "#ffffff",
-          lineColor: dark ? "#a1a1a6" : "#6e6e73",
-          fontFamily: "-apple-system, BlinkMacSystemFont, PingFang SC, system-ui",
+          background: token("--color-paper"),
+          primaryColor: token("--color-neutral-2"),
+          primaryTextColor: token("--color-neutral-9"),
+          primaryBorderColor: token("--color-accent"),
+          secondaryColor: token("--color-neutral-3"),
+          tertiaryColor: token("--color-paper"),
+          lineColor: token("--color-neutral-7"),
+          fontFamily: token("--font-sans"),
         },
       });
       return mermaid.render(id, source);

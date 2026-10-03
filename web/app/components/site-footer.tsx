@@ -17,6 +17,7 @@ export function SiteFooter() {
           {site.githubUrl && <a href={site.githubUrl} rel="noopener noreferrer" target="_blank">GitHub</a>}
           <AmbientEffect />
         </nav>
+        <div id="footer-presence" />
       </div>
     </footer>
   );

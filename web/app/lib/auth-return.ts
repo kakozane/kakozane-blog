@@ -12,5 +12,7 @@ export function safeReturnPath(value: string | null, fallback = "/"): string {
 }
 
 export function authPagePath(page: "login" | "register", next: string): string {
-  return `/${page}?${new URLSearchParams({ next: safeReturnPath(next) })}`;
+  const url = new URL(safeReturnPath(next), origin);
+  url.searchParams.set("auth", page);
+  return `${url.pathname}${url.search}${url.hash}`;
 }
