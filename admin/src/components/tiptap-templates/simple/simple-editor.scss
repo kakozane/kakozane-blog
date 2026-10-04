@@ -1,0 +1,49 @@
+.simple-editor-wrapper {
+  width: 100%;
+  min-height: 440px;
+  position: relative;
+}
+
+.simple-editor-search-and-replace {
+  position: absolute;
+  top: calc(var(--tt-toolbar-height) + 0.5rem);
+  right: 0.5rem;
+  z-index: 51;
+  max-height: calc(100dvh - var(--tt-toolbar-height) - 1rem);
+}
+
+.simple-editor-content {
+  max-width: 648px;
+  width: 100%;
+  margin: 0 auto;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.simple-editor-content .tiptap.ProseMirror.simple-editor {
+  flex: 1;
+  padding: 2rem 2rem 5rem;
+  min-height: 380px;
+}
+
+@media screen and (max-width: 480px) {
+  .simple-editor-search-and-replace {
+    top: 0.5rem;
+    left: 0.5rem;
+    width: auto;
+    max-height: calc(100dvh - 1rem);
+  }
+
+  .simple-editor-content .tiptap.ProseMirror.simple-editor {
+    padding: 1rem 1.5rem 5rem;
+  }
+}
+
+// 后台表单内使用顶部工具栏，避免全屏模板的视口定位覆盖表单。
+.simple-editor-wrapper .tiptap-toolbar[data-variant="fixed"] {
+  position: sticky;
+  top: 0;
+  bottom: auto;
+}

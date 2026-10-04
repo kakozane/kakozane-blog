@@ -44,6 +44,8 @@ button { cursor: pointer; }
 .site-nav-more summary { list-style: none; cursor: pointer; }
 .site-nav-more summary::-webkit-details-marker { display: none; }
 .site-nav-more-panel { position: absolute; top: calc(100% + 12px); left: 0; display: grid; min-width: 164px; padding: 8px; border: 1px solid var(--border-soft); border-radius: 12px; background: var(--background); box-shadow: var(--shadow-whisper); }
+/* Keep the hover path continuous across the visual gap below the trigger. */
+.site-nav-more-panel::before { content: ""; position: absolute; top: -13px; left: 0; width: 100%; height: 13px; }
 .site-nav-more-panel a { padding: 11px 12px; border-radius: 7px; font-size: var(--text-copy-14); }
 .site-nav-more-panel a:hover, .site-nav-more-panel a[aria-current="page"] { background: var(--muted); color: var(--foreground); }
 .site-login { flex: none; padding: 8px 0; border: 0; background: transparent; color: var(--primary); }
@@ -669,3 +671,21 @@ button { cursor: pointer; }
   .auth-back { margin-bottom: 56px; }
   .account-likes-list li { flex-direction: column; gap: 6px; }
 }
+
+.rich-align-left { text-align: left; }
+.rich-align-center { text-align: center; }
+.rich-align-right { text-align: right; }
+.rich-align-justify { text-align: justify; }
+mark { color: inherit; }
+.rich-highlight-gray { background-color: #f8f8f7; color: #24231f; }
+.rich-highlight-brown { background-color: #f4eeee; color: #24231f; }
+.rich-highlight-orange { background-color: #fbecdd; color: #24231f; }
+.rich-highlight-yellow { background-color: #fef9c3; color: #24231f; }
+.rich-highlight-green { background-color: #dcfce7; color: #24231f; }
+.rich-highlight-blue { background-color: #e0f2fe; color: #24231f; }
+.rich-highlight-purple { background-color: #f3e8ff; color: #24231f; }
+.rich-highlight-pink { background-color: #fcf1f6; color: #24231f; }
+.rich-highlight-red { background-color: #ffe4e6; color: #24231f; }
+ul[data-type="taskList"] { list-style: none; padding-left: 0; }
+li[data-type="taskItem"] { display: flex; gap: 8px; align-items: baseline; }
+li[data-type="taskItem"] > div { flex: 1; }

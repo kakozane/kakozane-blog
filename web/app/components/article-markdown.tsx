@@ -1,3 +1,6 @@
+import rehypeRaw from 'rehype-raw'
+import rehypeSanitize from 'rehype-sanitize'
+import { isRichHTML, richHTMLFormatting, richHTMLSchema } from '../lib/rich-html'
 import { memo, useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -21,7 +24,7 @@ export const ArticleMarkdown = memo(function ArticleMarkdown({ source, articleID
   }, [openImage]);
 
   return <>
-    <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath, remarkAlert]} remarkRehypeOptions={markdownOptions} rehypePlugins={[rehypeKatex, rehypeHighlight]} components={{
+    <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath, remarkAlert]} remarkRehypeOptions={markdownOptions} rehypePlugins={isRichHTML(source) ? [rehypeRaw, richHTMLFormatting, [rehypeSanitize, richHTMLSchema], rehypeKatex, rehypeHighlight] : [rehypeKatex, rehypeHighlight]} components={{
       h2: ({ node, children, ...props }) => { const id = articleID !== undefined && node?.position?.start.line ? headingID(articleID, node.position.start.line) : undefined; return <h2 {...props} id={id}>{children}{id && <a aria-label="链接到此章节" className="heading-anchor" href={`#${id}`}>#</a>}</h2>; },
       h3: ({ node, children, ...props }) => { const id = articleID !== undefined && node?.position?.start.line ? headingID(articleID, node.position.start.line) : undefined; return <h3 {...props} id={id}>{children}{id && <a aria-label="链接到此章节" className="heading-anchor" href={`#${id}`}>#</a>}</h3>; },
       pre: ({ children }) => <CodeBlock>{children}</CodeBlock>,

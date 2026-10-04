@@ -1,3 +1,6 @@
+import rehypeRaw from 'rehype-raw'
+import rehypeSanitize from 'rehype-sanitize'
+import { isRichHTML, richHTMLFormatting, richHTMLSchema } from '../lib/rich-html'
 import { Children, isValidElement, useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -56,7 +59,7 @@ export default function MarkdownPreview({ value }: { value: string }) {
   return <ReactMarkdown
     remarkPlugins={[remarkGfm, remarkMath, remarkAlert]}
     remarkRehypeOptions={markdownOptions}
-    rehypePlugins={[rehypeKatex, rehypeHighlight]}
+    rehypePlugins={isRichHTML(value) ? [rehypeRaw, richHTMLFormatting, [rehypeSanitize, richHTMLSchema], rehypeKatex, rehypeHighlight] : [rehypeKatex, rehypeHighlight]}
     components={{ pre: ({ children }) => <PreviewCodeBlock>{children}</PreviewCodeBlock> }}
   >{value || '暂无内容'}</ReactMarkdown>
 }

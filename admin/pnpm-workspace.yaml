@@ -2,3 +2,6 @@
 minimumReleaseAgeExclude:
   - vite@8.3.2
   - katex@0.19.0
+# Sass 使用自带编译器，无需运行可选原生 watcher 的安装脚本。
+allowBuilds:
+  '@parcel/watcher': false

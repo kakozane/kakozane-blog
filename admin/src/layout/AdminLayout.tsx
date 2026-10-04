@@ -1,13 +1,15 @@
-import { ExportOutlined, LogoutOutlined, UserOutlined } from '@ant-design/icons'
+import { MoonOutlined, SunOutlined, ExportOutlined, LogoutOutlined, UserOutlined } from '@ant-design/icons'
 import { PageContainer, ProLayout } from '@ant-design/pro-components'
 import { Button, Dropdown } from 'antd'
 import { Link, Outlet, useLoaderData, useLocation, useNavigate } from 'react-router'
 
+import { useAdminTheme } from '../theme/AdminTheme'
 import type { AdminUser } from '../types/auth'
 import { adminMenu, adminPageName } from '../router/menu'
 import { publicPreviewOrigin } from '../lib/preview-origin'
 
 export default function AdminLayout() {
+  const { dark, toggle } = useAdminTheme()
   const user = useLoaderData() as AdminUser
   const location = useLocation()
   const navigate = useNavigate()
@@ -21,6 +23,7 @@ export default function AdminLayout() {
       logo={<span className="admin-brand" aria-hidden="true">K</span>}
       locale="zh-CN"
       layout="mix"
+      navTheme={dark ? 'realDark' : 'light'}
       fixedHeader
       fixSiderbar
       siderWidth={224}
@@ -30,7 +33,10 @@ export default function AdminLayout() {
       location={{ pathname: location.pathname }}
       menuHeaderRender={(_, dom) => <Link to="/">{dom}</Link>}
       menuItemRender={(item, defaultDom) => <Link to={item.path ?? '/'}>{defaultDom}</Link>}
-      actionsRender={() => publicOrigin ? [<Button key="public" href={publicOrigin} target="_blank" rel="noopener noreferrer" type="text" icon={<ExportOutlined />}>访问博客</Button>] : []}
+      actionsRender={() => [
+        <Button key="theme" type="text" aria-label={dark ? '切换浅色模式' : '切换深色模式'} title={dark ? '切换浅色模式' : '切换深色模式'} icon={dark ? <SunOutlined /> : <MoonOutlined />} onClick={toggle} />,
+        ...(publicOrigin ? [<Button key="public" href={publicOrigin} target="_blank" rel="noopener noreferrer" type="text" icon={<ExportOutlined />}>访问博客</Button>] : []),
+      ]}
       avatarProps={{
         icon: <UserOutlined />,
         title: user.displayName,

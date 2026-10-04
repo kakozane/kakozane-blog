@@ -1,5 +1,5 @@
 import { createPortal } from "react-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, useLocation, useRevalidator, useRouteLoaderData } from "react-router";
 
 import { visitorID } from "../lib/visitor";
@@ -34,6 +34,26 @@ const secondaryNavItems = [
 
 export function SiteHeader() {
   const location = useLocation();
+  const moreRef = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    function dismiss(event: PointerEvent) {
+      if (event.target instanceof Node && !moreRef.current?.contains(event.target)) {
+        moreRef.current?.removeAttribute("open");
+      }
+    }
+    function escape(event: KeyboardEvent) {
+      const menu = moreRef.current;
+      if (event.key !== "Escape" || !menu?.open) return;
+      menu.open = false;
+      if (menu.contains(document.activeElement)) menu.querySelector("summary")?.focus();
+    }
+    document.addEventListener("pointerdown", dismiss);
+    document.addEventListener("keydown", escape);
+    return () => {
+      document.removeEventListener("pointerdown", dismiss);
+      document.removeEventListener("keydown", escape);
+    };
+  }, []);
   const { user, site } = useRouteLoaderData("root") as { user: PublicUser | null; site: Site };
   const { revalidate } = useRevalidator();
   const [footer, setFooter] = useState<HTMLElement | null>(null);
@@ -114,7 +134,11 @@ export function SiteHeader() {
       <Link className="site-logo" title={site.title} to="/">{site.avatarUrl && <img alt="" src={site.avatarUrl} />}<span>{site.title}</span></Link>
       <nav aria-label="主导航" className="site-nav">
         {primaryNavItems.map((item) => <NavLink end={item.to === "/"} key={item.to} to={item.to}>{item.label}</NavLink>)}
-        <details className="site-nav-more"><summary aria-current={moreActive ? "page" : undefined}>更多</summary><div className="site-nav-more-panel">{moreItems.map((item, index) => item.to.startsWith("https://") ? <a href={item.to} key={`${item.to}-${index}`} onClick={(event) => event.currentTarget.closest("details")?.removeAttribute("open")} rel="noopener noreferrer" target="_blank">{item.label} ↗</a> : <NavLink key={`${item.to}-${index}`} onClick={(event) => event.currentTarget.closest("details")?.removeAttribute("open")} to={item.to}>{item.label}</NavLink>)}</div></details>
+        <details className="site-nav-more" ref={moreRef}
+          onPointerEnter={(event) => { if (event.pointerType === "mouse") event.currentTarget.open = true; }}
+          onPointerLeave={(event) => { if (event.pointerType === "mouse" && !event.currentTarget.contains(document.activeElement)) event.currentTarget.open = false; }}
+          onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) event.currentTarget.open = false; }}
+        ><summary aria-current={moreActive ? "page" : undefined}>更多</summary><div className="site-nav-more-panel">{moreItems.map((item, index) => item.to.startsWith("https://") ? <a href={item.to} key={`${item.to}-${index}`} onClick={(event) => event.currentTarget.closest("details")?.removeAttribute("open")} rel="noopener noreferrer" target="_blank">{item.label} ↗</a> : <NavLink key={`${item.to}-${index}`} onClick={(event) => event.currentTarget.closest("details")?.removeAttribute("open")} to={item.to}>{item.label}</NavLink>)}</div></details>
       </nav>
       <div className="site-actions"><button aria-keyshortcuts="Meta+K Control+K" aria-label="快速搜索" className="site-search-trigger" onClick={() => setSearchOpen(true)} title="快速搜索（⌘K / Ctrl+K）" type="button"><svg aria-hidden="true" fill="none" height="18" stroke="currentColor" strokeLinecap="round" strokeWidth="1.8" viewBox="0 0 24 24" width="18"><circle cx="10.8" cy="10.8" r="6.8" /><path d="m16 16 4.5 4.5" /></svg></button><ThemeSwitch />{user ? <button className="site-login" onClick={signOut} type="button">退出</button> : <Link className="site-login" preventScrollReset to={authPagePath("login", `${location.pathname}${location.search}${location.hash}`)}>登录</Link>}
 

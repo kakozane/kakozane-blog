@@ -1,0 +1,10 @@
+// 需已启动开发环境和本机 Playwright。可通过 PLAYWRIGHT_MODULE_PATH 指定已有安装路径。
+const {chromium}=require(process.env.PLAYWRIGHT_MODULE_PATH || 'playwright');const fs=require('node:fs'),assert=require('node:assert/strict');const A=process.env.ADMIN_ORIGIN || 'https://admin.dev.kakozane.icu';const creds=Object.fromEntries(fs.readFileSync(process.env.ADMIN_CREDENTIALS_FILE || require('node:path').resolve(__dirname,'../api/bootstrap-admin.txt'),'utf8').trim().split('\n').map(l=>{let i=l.indexOf(': ');return[l.slice(0,i),l.slice(i+2)]}));
+(async()=>{const b=await chromium.launch({channel:'chrome',headless:true,args:['--no-proxy-server']});try{const c=await b.newContext({ignoreHTTPSErrors:true,colorScheme:'dark'});await c.request.post(A+'/api/v1/admin/auth/login',{data:creds,headers:{Origin:A}});const p=await c.newPage();await p.goto(A+'/posts/new');await p.getByRole('textbox',{name:'正文富文本编辑器'}).waitFor();await p.waitForTimeout(500);assert.equal(await p.locator('html').evaluate(e=>e.classList.contains('dark')),false,'后台默认浅色时编辑器不应自行进入暗色');console.log('PASS default light under dark OS');
+await p.getByRole('button',{name:'切换深色模式',exact:true}).click();await p.waitForTimeout(300);
+assert(await p.locator('html').evaluate(e=>e.classList.contains('dark')));
+const editor=p.locator('.blog-simple-editor');const colors=await editor.evaluate(e=>({fg:getComputedStyle(e).color,bg:getComputedStyle(e).backgroundColor}));assert.notEqual(colors.fg,'rgb(38, 38, 38)');console.log(colors);
+
+const fg=await p.getByRole('textbox',{name:'正文富文本编辑器'}).evaluate(e=>getComputedStyle(e).color);assert(fg.includes('255'),fg);
+await p.reload();await p.getByRole('textbox',{name:'正文富文本编辑器'}).waitFor();assert(await p.locator('html').evaluate(e=>e.classList.contains('dark')));
+await p.getByRole('button',{name:'Switch to light mode',exact:true}).click();await p.waitForTimeout(300);assert.equal(await p.locator('html').evaluate(e=>e.classList.contains('dark')),false);await p.getByRole('button',{name:'切换深色模式',exact:true}).waitFor();console.log('PASS global toggle, persistence, editor synchronization');}finally{await b.close()}})().catch(e=>{console.error(e);process.exit(1)});

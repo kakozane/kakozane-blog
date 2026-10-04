@@ -1,3 +1,8 @@
+import remarkRehype from "remark-rehype";
+import rehypeRaw from "rehype-raw";
+import rehypeSanitize from "rehype-sanitize";
+import type { Root, Element } from "hast";
+import { isRichHTML } from "./rich-html.ts";
 import { toString } from "mdast-util-to-string";
 import remarkParse from "remark-parse";
 import { unified } from "unified";
@@ -5,6 +10,12 @@ import { unified } from "unified";
 const markdown = unified().use(remarkParse);
 
 export function markdownText(source: string) {
+  if (isRichHTML(source)) {
+    const parser = unified().use(remarkParse).use(remarkRehype, { allowDangerousHtml: true }).use(rehypeRaw).use(rehypeSanitize);
+    const tree = parser.runSync(parser.parse(source)) as Root;
+    function text(node: Root | Element): string { return node.children.map((child) => child.type === "text" ? child.value : child.type === "element" ? text(child) : "").join(" "); }
+    return text(tree).replace(/\s+/gu, " ").trim();
+  }
   return toString(markdown.parse(source)).replace(/\s+/gu, " ").trim();
 }
 

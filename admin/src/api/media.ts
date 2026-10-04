@@ -11,10 +11,10 @@ export async function listMedia(page = 1): Promise<MediaList> {
   return responseData<MediaList>(await fetch(`/api/v1/admin/media?page=${page}`, { credentials: 'same-origin' }))
 }
 
-export async function uploadMedia(file: Blob): Promise<Media> {
+export async function uploadMedia(file: Blob, signal?: AbortSignal): Promise<Media> {
   const body = new FormData()
   body.append('file', file)
-  return responseData<Media>(await fetch('/api/v1/admin/media', { method: 'POST', body, credentials: 'same-origin' }))
+  return responseData<Media>(await fetch('/api/v1/admin/media', { method: 'POST', body, signal, credentials: 'same-origin' }))
 }
 
 export async function deleteMedia(id: number): Promise<void> {

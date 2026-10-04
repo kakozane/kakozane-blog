@@ -239,12 +239,23 @@ go run ./cmd/seed-demo --apply  # 使用 config.yaml 中的数据库连接写入
 
 共 70 条已发布内容：28 篇文章、21 篇手记、21 条思考，2020—2026 年每年 10 条，最晚日期为 2026-10-01。标题或正文标明演示，链接统一使用 `demo-年份-序号`；重复执行跳过已有链接，不覆盖原有内容。需要先完成数据库迁移并创建管理员。请仅对需要演示数据的数据库执行。
 
-文章、手记和自定义页面共用 `admin/src/components/RichTextEditor.tsx`，采用 Tiptap 3.31.4 和官方 Markdown 扩展。默认可视化编辑，支持标题、加粗、斜体、删除线、引用、链接、列表、任务清单、代码、表格行列操作、图片上传、公式、Mermaid 代码、撤销和重做；仍以 Markdown 保存到现有接口。`admin/src/lib/rich-text.ts` 集中定义扩展及兼容规则，`rich-text.test.mjs` 检查格式往返。
+文章、手记和自定义页面使用 **Tiptap 官方 Simple Editor 模板**（https://template.tiptap.dev/preview/templates/simple），由 `@tiptap/cli@3.19.4 add simple-editor` 安装，保留官方图标工具栏、标题/列表下拉、链接弹层、高亮、上下标、对齐、图片上传节点、查找替换、撤销重做及移动端交互。
 
-可切换 Markdown 源码。含脚注或原始 HTML 的旧内容会自动进入源码模式，避免官方 Markdown 扩展丢失不支持的语法；移除这些语法后可回到可视化编辑。公式通过源码修改，Mermaid 在下方预览中渲染。自动草稿、离开提醒、前台预览和图片上传期间禁止保存继续有效。
+- `admin/src/components/tiptap-templates/simple/simple-editor.tsx`：官方模板及博客数据接口适配。
+- `admin/src/components/tiptap-ui/`、`tiptap-ui-primitive/`、`tiptap-node/`、`tiptap-icons/`：官方组件源码；`hooks/`、`styles/` 和 `lib/tiptap-utils.ts` 为配套依赖。
+- `admin/src/components/RichTextEditor.tsx`：表单包装、源码切换及上传状态。
+- 正常 Markdown 仍按 Markdown 保存；使用下划线、彩色高亮、上下标或段落对齐时，以 `<!-- tiptap-rich-html -->` 标记的 HTML 保存在现有 `contentMd` 字段中，无需数据库迁移。前台与后台预览使用 HTML 白名单清洗，禁止脚本、事件属性和任意内联样式，仅映射已知格式。
+- 含脚注或未标记 HTML 的旧文继续使用源码模式防止格式丢失。既有表格、公式与 Mermaid 可通过源码维护并预览，官方模板本身没有这些插入按钮。
+- 图片仍上传到本项目媒体接口；草稿备份、离开提醒、保存和前台预览继续沿用。上传期间禁止保存。
 
 ### 前台 Yohaku 视觉
 
 前台统一采用 [Yohaku 设计系统](https://github.com/Innei/Yohaku/tree/main/design-system) 的暖纸色、三层中性色、梅色强调、衬线标题与紧凑控件。`web/app/yohaku-tokens.css` 维护主题和字号，`web/app/app.css` 维护基础组件，`web/app/editorial.css` 维护各栏目布局。完整规则见 `web/DESIGN.md`，上游 MIT 许可见 `THIRD_PARTY_NOTICES.md`。
 
 登录注册使用当前页面弹窗，旧 `/login`、`/register` 链接转到弹窗；在线人数展示在页脚右侧。
+
+### 后台浅色 / 深色主题
+
+右上角太阳 / 月亮按钮切换整个后台主题，默认浅色，选择保存在当前浏览器。使用 Ant Design 的 `defaultAlgorithm` / `darkAlgorithm` 与 ProLayout 的 `light` / `realDark`，编辑器与后台共用主题，编辑器按钮也会同步切换全局主题。实现见 `admin/src/theme/AdminTheme.tsx`。
+
+已启动开发服务且已安装 Playwright 时，可运行 `node scripts/check-admin-theme.cjs` 回归验证默认主题、切换、刷新持久化及编辑器文字颜色；已有独立 Playwright 安装可通过 `PLAYWRIGHT_MODULE_PATH` 指定。脚本默认从本地忽略文件 `api/bootstrap-admin.txt` 读取测试账号，也支持 `ADMIN_CREDENTIALS_FILE` 和 `ADMIN_ORIGIN`。
