@@ -1,40 +1,75 @@
+# 本地开发配置，由 compose.dev.yaml 挂载到 /etc/caddy/Caddyfile。
+# 与打包模式不同，前台和后台页面都转发到开发服务，支持源码修改后的热更新。
+# localhost 使用下列显式端口；开发域名未写端口，HTTPS 默认使用 443。
+# 开发域名需先通过本机 hosts 指向本机，相关端口由 compose.dev.yaml 映射。
+# api、web、admin 是 Compose 服务名，并不是公网域名。
 localhost:6324, api.dev.kakozane.icu {
-	# 开发入口仍使用 HTTPS，登录 Cookie 和同源校验可正常工作。
+	# 使用 Caddy 自建的本地 CA 签发 HTTPS 证书，不是公网可信证书。
+	# 浏览器需要信任该 CA 的根证书；证书状态由 Compose 的 /data 卷保存。
 	tls internal
+	# 保留请求路径并转发到 Go Gin 后端的内部端口。
 	reverse_proxy api:6324
 }
 
 localhost:6325, dev.kakozane.icu {
+	# 使用 Caddy 自建的本地 CA 签发 HTTPS 证书，不是公网可信证书。
+	# 浏览器需要信任该 CA 的根证书；证书状态由 Compose 的 /data 卷保存。
 	tls internal
+	# 命名匹配器：这些站点地图、订阅源和爬虫规则由 Go 后端生成。
+	# 将它们单独交给 API，避免落入前台 SSR 页面路由。
 	@discovery path /sitemap.xml /feed.xml /notes/feed.xml /thinking/feed.xml /says/feed.xml /robots.txt
+	# 匹配上面的 @discovery 路径，保留原始请求路径转发。
 	handle @discovery {
+		# 保留请求路径并转发到 Go Gin 后端的内部端口。
 		reverse_proxy api:6324
 	}
+	# 匹配 /api/ 下的接口，包括 /api/v1/*；handle 不删除 /api 前缀。
+	# 浏览器可直接请求当前站点的 /api/v1/...，无需跨域访问另一个接口域名。
 	handle /api/* {
+		# 保留请求路径并转发到 Go Gin 后端的内部端口。
 		reverse_proxy api:6324
 	}
+	# 上传文件入口：handle_path 会剥离 /uploads/ 前缀。
+	# 例如 /uploads/example.png 对应 /srv/uploads/example.png；该目录来自上传文件卷。
 	handle_path /uploads/* {
+		# 为当前处理分支指定文件根目录；* 表示匹配所有请求。
 		root * /srv/uploads
+		# 告诉浏览器按响应的 Content-Type 处理资源，不自行猜测文件类型。
 		header X-Content-Type-Options nosniff
+		# 从上面设置的根目录返回静态文件；未开启目录浏览。
 		file_server
 	}
+	# 不带匹配条件的兜底分支：处理未被其他 handle 分支接管的请求。
 	handle {
-		# Caddy 会透传 Vite 的 WebSocket 热更新连接。
+		# 将页面与资源请求交给前台服务；api/web 服务名由 Docker 网络解析。
 		reverse_proxy web:6325
 	}
 }
 
 localhost:6326, admin.dev.kakozane.icu {
+	# 使用 Caddy 自建的本地 CA 签发 HTTPS 证书，不是公网可信证书。
+	# 浏览器需要信任该 CA 的根证书；证书状态由 Compose 的 /data 卷保存。
 	tls internal
+	# 匹配 /api/ 下的接口，包括 /api/v1/*；handle 不删除 /api 前缀。
+	# 浏览器可直接请求当前站点的 /api/v1/...，无需跨域访问另一个接口域名。
 	handle /api/* {
+		# 保留请求路径并转发到 Go Gin 后端的内部端口。
 		reverse_proxy api:6324
 	}
+	# 上传文件入口：handle_path 会剥离 /uploads/ 前缀。
+	# 例如 /uploads/example.png 对应 /srv/uploads/example.png；该目录来自上传文件卷。
 	handle_path /uploads/* {
+		# 为当前处理分支指定文件根目录；* 表示匹配所有请求。
 		root * /srv/uploads
+		# 告诉浏览器按响应的 Content-Type 处理资源，不自行猜测文件类型。
 		header X-Content-Type-Options nosniff
+		# 从上面设置的根目录返回静态文件；未开启目录浏览。
 		file_server
 	}
+	# 不带匹配条件的兜底分支：处理未被其他 handle 分支接管的请求。
 	handle {
+		# 后台转发到 Vite 开发服务，而不是读取构建后的 /srv/admin 文件。
+		# reverse_proxy 支持 WebSocket，浏览器的热更新连接也经过这里。
 		reverse_proxy admin:6326
 	}
 }

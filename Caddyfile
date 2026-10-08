@@ -1,49 +1,89 @@
+# 本地运行“已构建镜像”的配置，由 compose.yaml 使用。
+# Dockerfile.proxy 将本文件复制到镜像内的 /etc/caddy/Caddyfile。
+# 入口：https://localhost:6324（接口）、6325（前台）、6326（后台）。
+# api、web 是 Docker Compose 服务名，容器通过内部网络访问它们。
+# 后台已在构建镜像时执行 pnpm build，运行时直接提供 /srv/admin 中的文件。
+# 本文件不提供前端开发热更新；需要热更新时使用 compose.dev.yaml。
 localhost:6324 {
-	# API 也经由 HTTPS 对外提供，Gin 只在容器网络内监听。
+	# 使用 Caddy 自建的本地 CA 签发 HTTPS 证书，不是公网可信证书。
+	# 浏览器需要信任该 CA 的根证书；证书状态由 Compose 的 /data 卷保存。
 	tls internal
+	# 转发到 Gin 后端的容器内部端口；不是重新访问宿主机公网入口。
 	reverse_proxy api:6324 {
+		# 向后端传递直接连接 Caddy 的客户端 IP；header_up 修改发给上游的请求头。
 		header_up X-Real-IP {remote_host}
 	}
 }
 
 localhost:6325 {
-	# 前台同源代理 API，其余请求交给 React Router SSR。
+	# 使用 Caddy 自建的本地 CA 签发 HTTPS 证书，不是公网可信证书。
+	# 浏览器需要信任该 CA 的根证书；证书状态由 Compose 的 /data 卷保存。
 	tls internal
+	# 命名匹配器：这些站点地图、订阅源和爬虫规则由 Go 后端生成。
+	# 将它们单独交给 API，避免落入前台 SSR 页面路由。
 	@discovery path /sitemap.xml /feed.xml /notes/feed.xml /thinking/feed.xml /says/feed.xml /robots.txt
+	# 匹配上面的 @discovery 路径，保留原始请求路径转发。
 	handle @discovery {
+		# 保留请求路径并转发到 Go Gin 后端的内部端口。
 		reverse_proxy api:6324
 	}
+	# 匹配 /api/ 下的接口，包括 /api/v1/*；handle 不删除 /api 前缀。
+	# 浏览器可直接请求当前站点的 /api/v1/...，无需跨域访问另一个接口域名。
 	handle /api/* {
+		# 转发到 Gin 后端的容器内部端口；不是重新访问宿主机公网入口。
 		reverse_proxy api:6324 {
+			# 向后端传递直接连接 Caddy 的客户端 IP；header_up 修改发给上游的请求头。
 			header_up X-Real-IP {remote_host}
 		}
 	}
+	# 上传文件入口：handle_path 会剥离 /uploads/ 前缀。
+	# 例如 /uploads/example.png 对应 /srv/uploads/example.png；该目录来自上传文件卷。
 	handle_path /uploads/* {
+		# 为当前处理分支指定文件根目录；* 表示匹配所有请求。
 		root * /srv/uploads
+		# 告诉浏览器按响应的 Content-Type 处理资源，不自行猜测文件类型。
 		header X-Content-Type-Options nosniff
+		# 从上面设置的根目录返回静态文件；未开启目录浏览。
 		file_server
 	}
+	# 不带匹配条件的兜底分支：处理未被其他 handle 分支接管的请求。
 	handle {
+		# 将页面与资源请求交给前台服务；api/web 服务名由 Docker 网络解析。
 		reverse_proxy web:6325
 	}
 }
 
 localhost:6326 {
-	# 后台同源代理 API，并将页面路由回退到入口文件。
+	# 使用 Caddy 自建的本地 CA 签发 HTTPS 证书，不是公网可信证书。
+	# 浏览器需要信任该 CA 的根证书；证书状态由 Compose 的 /data 卷保存。
 	tls internal
+	# 匹配 /api/ 下的接口，包括 /api/v1/*；handle 不删除 /api 前缀。
+	# 浏览器可直接请求当前站点的 /api/v1/...，无需跨域访问另一个接口域名。
 	handle /api/* {
+		# 转发到 Gin 后端的容器内部端口；不是重新访问宿主机公网入口。
 		reverse_proxy api:6324 {
+			# 向后端传递直接连接 Caddy 的客户端 IP；header_up 修改发给上游的请求头。
 			header_up X-Real-IP {remote_host}
 		}
 	}
+	# 上传文件入口：handle_path 会剥离 /uploads/ 前缀。
+	# 例如 /uploads/example.png 对应 /srv/uploads/example.png；该目录来自上传文件卷。
 	handle_path /uploads/* {
+		# 为当前处理分支指定文件根目录；* 表示匹配所有请求。
 		root * /srv/uploads
+		# 告诉浏览器按响应的 Content-Type 处理资源，不自行猜测文件类型。
 		header X-Content-Type-Options nosniff
+		# 从上面设置的根目录返回静态文件；未开启目录浏览。
 		file_server
 	}
+	# 不带匹配条件的兜底分支：处理未被其他 handle 分支接管的请求。
 	handle {
+		# 后台静态文件根目录：Dockerfile.proxy 将 admin/dist 复制到这里。
 		root * /srv/admin
+		# 优先返回真实文件；找不到时返回 React 单页应用入口 index.html。
+		# 这样直接打开或刷新后台子路由也能由前端路由接管。
 		try_files {path} /index.html
+		# 从上面设置的根目录返回静态文件；未开启目录浏览。
 		file_server
 	}
 }

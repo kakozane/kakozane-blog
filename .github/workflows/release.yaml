@@ -1,0 +1,172 @@
+# GitHub 会读取 .github/workflows/ 下的 .yaml / .yml 文件，将其识别为工作流。
+# 总流程：检查代码 → 并行构建三个镜像并推送 ACR → 满足条件时 SSH 部署。
+# 构建运行在 GitHub 提供的临时机器上；博客最终运行在自己的阿里云服务器。
+# 这里编排步骤，真正更新服务器的命令在 deploy/release.sh 中。
+name: Build and deploy blog
+
+# 触发方式：推送到 main，或者在 Actions 页面点击 Run workflow。
+# 本地编辑和 git commit 不会触发；git push 到 main、PR 合并到 main 会触发。
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      # 手动运行时显示的复选框，其值通过 inputs.deploy 读取。
+      # 不勾选时不会主动请求部署，但 ENABLE_AUTO_DEPLOY=true 仍会允许部署。
+      deploy:
+        description: '构建后部署到生产服务器'
+        type: boolean
+        default: false
+
+# 限制 GitHub 自动提供的 GITHUB_TOKEN 权限，仅允许读取仓库内容。
+# ACR 登录和 SSH 登录使用下文单独配置的凭据，不使用这个 Token。
+permissions:
+  contents: read
+
+# 同一仓库中使用此分组的运行互斥，避免两次流程同时部署生产环境。
+# false 表示新运行不会中断正在执行的运行。
+# 默认最多保留一个运行中和一个待执行项，更新的待执行项可能替换旧的待执行项。
+concurrency:
+  group: blog-production
+  cancel-in-progress: false
+
+# 配置值来自 GitHub，而不是自动读取本地 .env 或服务器配置文件：
+# 1. Settings → Environments → production：
+#    Environment secrets：ACR_USERNAME、ACR_PASSWORD、SSH_PRIVATE_KEY、SSH_KNOWN_HOSTS。
+#    Environment variables：ACR_REGISTRY、ACR_NAMESPACE、DEPLOY_HOST、DEPLOY_PORT、DEPLOY_USER。
+# 2. Settings → Secrets and variables → Actions → Variables：
+#    Repository variable：ENABLE_AUTO_DEPLOY，值填字符串 true 或 false。
+#    此开关用于 job 的 if 判断，必须在环境配置加载前可用，因此放在仓库级。
+# ${{ secrets.NAME }} 读取保密值，${{ vars.NAME }} 读取普通配置。
+# ${{ github.sha }} 是 GitHub 自动提供的本次提交完整 SHA，用于标记镜像版本。
+jobs:
+  # 第一阶段：检查后端和生成文档。失败后不会开始构建和部署。
+  check:
+    # GitHub 托管的 Ubuntu Runner，不是自己的阿里云服务器。
+    runs-on: ubuntu-latest
+    steps:
+      # uses 调用别人封装好的 Action；@ 后面固定本项目使用的版本。
+      # checkout 将本次提交的代码检出到当前 Runner 工作目录。
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-go@v7.0.0
+        with:
+          # 根据 go.mod 安装 Go，依赖缓存根据 go.sum 的内容变化更新。
+          go-version-file: api/go.mod
+          cache-dependency-path: api/go.sum
+      - name: Go tests and Swagger consistency
+        # run 中的命令都从 api 目录执行；| 表示多行 Shell 脚本。
+        working-directory: api
+        run: |
+          # 执行 main.go 中的 go:generate，重新生成 Swagger 文档。
+          go generate ./cmd/server
+          # 如果生成结果与提交的文档不同，则失败，提醒开发者更新并提交文档。
+          git diff --exit-code -- docs
+          # 执行后端全部 Go 包的测试。
+          go test ./...
+
+  # 第二阶段：检查通过后，使用矩阵创建三个独立的构建任务。
+  build:
+    needs: check
+    runs-on: ubuntu-latest
+    # 关联名为 production 的 GitHub Environment，从中读取 Secrets 和 Variables。
+    # 这只是 GitHub 配置分组，不会创建服务器，也不代表此任务正在部署。
+    environment: production
+    strategy:
+      # 一个镜像失败时，其余镜像继续构建，便于一次看到所有构建结果。
+      # 但部署任务仍需三个镜像全部成功才会继续。
+      fail-fast: false
+      matrix:
+        include:
+          # image：ACR 仓库名称；context：Docker 可读取的构建文件范围；file：Dockerfile。
+          # Go 后端：编译 server 和首次初始化管理员使用的 bootstrap 程序。
+          - image: blog-api
+            context: ./api
+            file: ./api/Dockerfile
+          # 博客前台：类型检查、构建 React Router SSR，镜像中包含 Node 运行环境。
+          - image: blog-web
+            context: ./web
+            file: ./web/Dockerfile
+          # 后台与代理：构建管理后台静态文件，再与 Caddy 一起放入最终镜像。
+          - image: blog-proxy
+            context: .
+            file: ./Dockerfile.proxy
+    steps:
+      # 每个矩阵任务使用独立 Runner，因此都需要检出代码、安装构建工具并登录 ACR。
+      - uses: actions/checkout@v7.0.1
+      - uses: docker/setup-buildx-action@v4.4.1
+      - uses: docker/login-action@v4.6.0
+        with:
+          # registry 填 ACR 登录域名，不带 https://，也不包含命名空间。
+          registry: ${{ vars.ACR_REGISTRY }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+      - uses: docker/build-push-action@v7.4.0
+        with:
+          # matrix.xxx 分别读取上面当前这一行矩阵的值。
+          context: ${{ matrix.context }}
+          file: ${{ matrix.file }}
+          # 阿里云服务器是 x86_64，因此构建 linux/amd64 镜像。
+          platforms: linux/amd64
+          # 构建完成后推送到 ACR；仅构建不推送，服务器无法下载这些镜像。
+          push: true
+          # 当前 ACR 个人版拒绝 BuildKit 附加的 OCI attestation manifest。
+          # 关闭构建来源证明和软件物料清单附件，保留正常的应用镜像构建和推送。
+          provenance: false
+          sbom: false
+          # 地址格式：仓库域名/命名空间/镜像名:提交SHA。
+          # 三个镜像使用同一个 SHA，服务器可以按精确版本更新，而不是依赖 latest。
+          tags: ${{ vars.ACR_REGISTRY }}/${{ vars.ACR_NAMESPACE }}/${{ matrix.image }}:${{ github.sha }}
+          # 读写 GitHub Actions 构建缓存；各镜像独立 scope，避免互相覆盖缓存。
+          # mode=max 缓存中间构建阶段，以便复用下载依赖、编译等耗时步骤。
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+
+  # 第三阶段：三个镜像成功推送后，按条件更新生产服务器。
+  deploy:
+    needs: build
+    # 必须同时满足：分支为 main，并且“自动部署开关开启”或“手动勾选 deploy”。
+    # 不满足时显示 skipped（跳过），不代表失败。
+    # vars 返回字符串，所以比较 'true'；布尔型输入 inputs.deploy 则比较 true。
+    if: github.ref == 'refs/heads/main' && (vars.ENABLE_AUTO_DEPLOY == 'true' || inputs.deploy == true)
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      # 部署使用本次提交里的配置和脚本，确保与构建镜像的版本一致。
+      - uses: actions/checkout@v7.0.1
+      - name: Install SSH credentials
+        # 将 GitHub Secrets 映射为本步骤的 Shell 环境变量，不要打印它们。
+        env:
+          DEPLOY_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+        run: |
+          # 以下文件都写在 GitHub Runner 上，不是在生产服务器上。
+          # 私钥用于证明部署身份；known_hosts 用于核对服务器身份。
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/id_ed25519
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          # 仅当前用户可读写，满足 SSH 对私钥文件权限的要求。
+          chmod 600 ~/.ssh/id_ed25519 ~/.ssh/known_hosts
+      - name: Deploy exact commit
+        env:
+          # 生产环境变量：服务器 IP、SSH 端口和登录用户名。
+          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+          DEPLOY_PORT: ${{ vars.DEPLOY_PORT }}
+          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+          RELEASE_SHA: ${{ github.sha }}
+        run: |
+          # SHA 会被拼入远程路径和命令，先限制为 40 位十六进制字符串。
+          [[ "$RELEASE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          target="$DEPLOY_USER@$DEPLOY_HOST"
+          # BatchMode 禁止交互式密码提示；StrictHostKeyChecking 强制核对主机公钥。
+          # ssh 使用小写 -p 指定端口，scp 使用大写 -P。
+          ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -p "$DEPLOY_PORT" "$target" "mkdir -p /opt/blog/releases/$RELEASE_SHA"
+          # 只传部署配置和脚本；应用代码已经打包进 ACR 镜像，不在服务器重新编译。
+          # config.yaml 中的数据库密码由服务器单独保存，这里不会覆盖或传输它。
+          scp -o BatchMode=yes -o StrictHostKeyChecking=yes -P "$DEPLOY_PORT" deploy/compose.yaml deploy/Caddyfile deploy/release.sh "$target:/opt/blog/releases/$RELEASE_SHA/"
+          # 远程脚本负责：拉取镜像、备份、初始化管理员、更新容器、检查服务并记录版本。
+          # 该脚本返回非零退出码，SSH 和当前任务都会失败；目前不会自动回滚。
+          ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -p "$DEPLOY_PORT" "$target" "bash /opt/blog/releases/$RELEASE_SHA/release.sh $RELEASE_SHA"
+      - name: Remove runner SSH key
+        # 即使前面的部署失败，也尝试清理 Runner 中的私钥文件。
+        if: always()
+        run: rm -f ~/.ssh/id_ed25519

@@ -312,7 +312,7 @@ server:
 
 ## GitHub Actions 自动部署方案
 
-建议流程：`main` 提交 → GitHub 执行测试和构建 → 推送三个镜像到个人 ACR 仓库 → 服务器通过 SSH 拉取同一提交的镜像 → Compose 更新服务 → 健康检查。已添加 `.github/workflows/release.yml`：推送 main 自动检查和构建镜像；生产部署由仓库变量 `ENABLE_AUTO_DEPLOY` 控制，首次默认关闭，也可在 Actions 手动勾选 deploy。
+建议流程：`main` 提交 → GitHub 执行测试和构建 → 推送三个镜像到个人 ACR 仓库 → 服务器通过 SSH 拉取同一提交的镜像 → Compose 更新服务 → 健康检查。已添加 `.github/workflows/release.yaml`：推送 main 自动检查和构建镜像；生产部署由仓库变量 `ENABLE_AUTO_DEPLOY` 控制，首次默认关闭，也可在 Actions 手动勾选 deploy。
 
 服务器只有约 2 GB 内存，构建放在 GitHub Runner 上；Docker 镜像加速器仅帮助下载公共基础镜像，不能替代存放自己构建镜像的仓库。
 
@@ -354,7 +354,7 @@ ACR 创建 `blog-api`、`blog-web`、`blog-proxy` 三个仓库，分别对应 `a
 
 | 文件 | 作用 |
 | --- | --- |
-| `.github/workflows/release.yml` | Go 测试、Swagger 一致性检查、三个镜像的构建推送及可选 SSH 部署。前后台构建失败会阻止部署。 |
+| `.github/workflows/release.yaml` | Go 测试、Swagger 一致性检查、三个镜像的构建推送及可选 SSH 部署。前后台构建失败会阻止部署。 |
 | `deploy/compose.yaml` | ACR 镜像编排，API 接入现有数据库网络，数据卷持久化。 |
 | `deploy/Caddyfile` | 容器内 HTTP 入口，由宝塔 Nginx 处理外部 HTTPS。 |
 | `deploy/release.sh` | 拉取镜像、备份、初始化管理员、更新服务并检查健康。 |
