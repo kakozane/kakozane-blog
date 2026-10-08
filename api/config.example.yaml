@@ -13,7 +13,7 @@ media:
   directory: uploads
 auth:
   # 精确配对来源；仅支持同站 HTTPS 域名。开发和生产使用各自的配对。
-  # 部署线上时替换为 https://kakozane.icu 与 https://admin.kakozane.icu。
+  # 部署线上时替换为 https://zaneng.cc 与 https://admin.zaneng.cc。
   sso_sites:
     - front_origin: https://dev.kakozane.icu
       admin_origin: https://admin.dev.kakozane.icu
