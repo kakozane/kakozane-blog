@@ -36,10 +36,11 @@ cp "$stage/Caddyfile" Caddyfile
 # 显式初始化管理员；重复执行不会重置密码。
 docker compose run --rm --no-deps api /bootstrap
 docker compose up -d --wait --wait-timeout 180
-curl --fail --silent --show-error --retry 6 --retry-delay 3 --retry-all-errors \
-  http://127.0.0.1:6325/api/v1/health >/dev/null
-curl --fail --silent --show-error http://127.0.0.1:6325/ >/dev/null
-curl --fail --silent --show-error http://127.0.0.1:6326/ >/dev/null
+# 兼容 Alibaba Cloud Linux 3 的 curl 7.61，避免使用新版 --retry-all-errors。
+for url in http://127.0.0.1:6325/api/v1/health http://127.0.0.1:6325/ http://127.0.0.1:6326/; do
+  curl --fail --silent --show-error --connect-timeout 3 --max-time 15 \
+    --retry 6 --retry-delay 3 --retry-connrefused "$url" >/dev/null
+done
 printf 'ACR_REGISTRY=%s\nACR_NAMESPACE=%s\nIMAGE_TAG=%s\n' "$ACR_REGISTRY" "$ACR_NAMESPACE" "$tag" > .env.next
 mv .env.next .env
 printf '%s\n' "$tag" > current-release
