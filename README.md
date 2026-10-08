@@ -108,8 +108,8 @@ cd .. && docker compose config -q && docker compose -f compose.prod.yaml config 
 ```yaml
 auth:
   sso_sites:
-    - front_origin: https://zaneng.cc
-      admin_origin: https://admin.zaneng.cc
+    - front_origin: https://retniw.cc
+      admin_origin: https://admin.retniw.cc
 ```
 
 前台已登录时，后台登录页会显示账号提示；管理员点击“使用此账号登录后台”即可继续，普通读者会看到无后台权限的提示。先登录后台时，前台首页及登录页也会显示确认入口。切回标签页会重新检查另一端状态。登录提示失败时仍可使用账号密码登录。
@@ -207,9 +207,9 @@ flowchart LR
 
 ## 线上部署
 
-规划地址：博客 <https://zaneng.cc/>，后台 <https://admin.zaneng.cc/>，独立 API <https://api.zaneng.cc/api/v1/health>。浏览器页面仍通过各自域名下的 `/api/v1` 同源访问 API。先将这些域名及 `www.zaneng.cc` 解析到服务器，并开放 80/443；Caddy 会自动申请、续期公开可信的证书。
+规划地址：博客 <https://retniw.cc/>，后台 <https://admin.retniw.cc/>，独立 API <https://api.retniw.cc/api/v1/health>。浏览器页面仍通过各自域名下的 `/api/v1` 同源访问 API。先将这些域名及 `www.retniw.cc` 解析到服务器，并开放 80/443；Caddy 会自动申请、续期公开可信的证书。
 
-生产机的 `api/config.yaml` 应填写**仅私网可达**的 MySQL/Redis 地址和独立数据库账号，不要公开数据库端口。然后执行 `docker compose -f compose.prod.yaml up --build -d`。首次部署前执行 `cd api && go run ./cmd/bootstrap` 创建管理员；请确认运行 bootstrap 的机器可访问生产数据库并妥善保存初始密码。后台“站点设置”中的站点地址应为 `https://zaneng.cc`，用于 RSS 和站点地图。
+生产机的 `api/config.yaml` 应填写**仅私网可达**的 MySQL/Redis 地址和独立数据库账号，不要公开数据库端口。然后执行 `docker compose -f compose.prod.yaml up --build -d`。首次部署前执行 `cd api && go run ./cmd/bootstrap` 创建管理员；请确认运行 bootstrap 的机器可访问生产数据库并妥善保存初始密码。后台“站点设置”中的站点地址应为 `https://retniw.cc`，用于 RSS 和站点地图。
 
 备份需同时包含 MySQL 的 `kakozane_blog` 数据库与 Docker 的 `media_data` 图片卷；`caddy_data` 保存 TLS 状态。升级前先备份，并安全保存 `api/config.yaml`。生产域名和数据库私网连通性要在正式部署时验证。
 
