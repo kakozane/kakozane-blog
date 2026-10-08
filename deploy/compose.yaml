@@ -1,0 +1,51 @@
+# GitHub Actions 构建镜像，服务器只拉取和运行；数据库由 /opt/blog-infra 管理。
+name: blog-production
+services:
+  api:
+    image: ${ACR_REGISTRY:?}/${ACR_NAMESPACE:?}/blog-api:${IMAGE_TAG:?}
+    restart: unless-stopped
+    environment:
+      GIN_MODE: release
+      BLOG_CONFIG_PATH: /etc/blog/config.yaml
+      BLOG_MEDIA_DIRECTORY: /data/uploads
+    volumes:
+      - ./config.yaml:/etc/blog/config.yaml:ro
+      - media_data:/data/uploads
+      # 首次初始化账号时，凭据保存到宿主机 state 目录。
+      - ./state:/state
+    working_dir: /state
+    networks: [default, backend]
+    healthcheck:
+      test: [CMD, wget, -q, -O, /dev/null, 'http://127.0.0.1:6324/api/v1/health']
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+  web:
+    image: ${ACR_REGISTRY:?}/${ACR_NAMESPACE:?}/blog-web:${IMAGE_TAG:?}
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 6325
+      API_INTERNAL_URL: http://api:6324
+    depends_on:
+      api: {condition: service_healthy}
+  proxy:
+    image: ${ACR_REGISTRY:?}/${ACR_NAMESPACE:?}/blog-proxy:${IMAGE_TAG:?}
+    restart: unless-stopped
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - media_data:/srv/uploads:ro
+    ports:
+      # 仅宝塔 Nginx 可从宿主机转发到这些 HTTP 端口；TLS 在 Nginx 终止。
+      - 127.0.0.1:6325:6325
+      - 127.0.0.1:6326:6326
+    depends_on:
+      api: {condition: service_healthy}
+      web: {condition: service_started}
+networks:
+  backend:
+    external: true
+    name: blog-backend
+volumes:
+  media_data:

@@ -280,3 +280,89 @@ go run ./cmd/seed-demo --apply  # 使用 config.yaml 中的数据库连接写入
 - 前台通知：`GET /auth/notifications?page=1`、`PUT /auth/notifications/:id/read`，仅限当前登录读者。
 
 回归验证：在**本地开发环境**运行 `node scripts/check-writing-workflow.cjs`（复用 `PLAYWRIGHT_MODULE_PATH`、`ADMIN_CREDENTIALS_FILE`、`ADMIN_ORIGIN`，另支持 `FRONT_ORIGIN`）。会创建临时文章、测试账号和评论，并在结束时清理，覆盖版本冲突、云端隔离、回收站、审核通知、浏览器草稿恢复和 Markdown 文件往返；不要指向生产环境。
+
+## Swagger 接口文档
+
+后端接入 `swaggo/swag` 和 `gin-swagger`。开发模式访问：
+
+- <https://api.dev.kakozane.icu/api/v1/swagger/index.html>
+- 或通过前台/后台的同源 `/api/v1/swagger/index.html` 访问，以调试该域名下的登录 Cookie。
+- 原始文档：`/api/v1/swagger/doc.json`。
+
+目前注释覆盖健康检查、前后台登录/会话、文章/手记/思考列表与详情、后台文章增删改、版本历史、回收站和云端草稿；其他模块暂未补充文档。Swagger 2.0 文档由处理器注释生成，生成产物提交 Git，运行时不依赖外部 CDN。
+
+```bash
+cd api
+# 使用 go.mod 中锁定的工具版本，无须全局安装 swag。
+go generate ./cmd/server
+go test ./...
+```
+
+`api/cmd/server/main.go` 保存文档标题和生成命令；`api/internal/handler/*.go` 保存接口注释；`api/docs/` 是自动生成文件，请勿直接编辑；`api/internal/router/swagger.go` 注册文档路由。
+
+`GIN_MODE=release` 时默认关闭文档（返回 404）；如需开放，在后端 YAML 中设置：
+
+```yaml
+server:
+  port: 6324
+  swagger_enabled: true
+```
+
+登录为同源 HTTPS + HttpOnly Cookie，不是 Bearer Token。Swagger 页面通过对应登录接口建立会话后，浏览器自动携带 Cookie；前后台会话各自独立。文档开关不会关闭业务接口原有的鉴权。对公网开放文档时，任何人都可以阅读这些接口说明。
+
+## GitHub Actions 自动部署方案
+
+建议流程：`main` 提交 → GitHub 执行测试和构建 → 推送三个镜像到个人 ACR 仓库 → 服务器通过 SSH 拉取同一提交的镜像 → Compose 更新服务 → 健康检查。已添加 `.github/workflows/release.yml`：推送 main 自动检查和构建镜像；生产部署由仓库变量 `ENABLE_AUTO_DEPLOY` 控制，首次默认关闭，也可在 Actions 手动勾选 deploy。
+
+服务器只有约 2 GB 内存，构建放在 GitHub Runner 上；Docker 镜像加速器仅帮助下载公共基础镜像，不能替代存放自己构建镜像的仓库。
+
+### GitHub 配置位置
+
+仓库 `Settings → Environments` 创建 `production`，限定 `main` 部署。以下 Secrets/Variables 放在此环境；workflow 的部署任务需声明 `environment: production` 才能读取。
+
+| 类型 | 名称 | 内容 |
+| --- | --- | --- |
+| Secret | `ACR_USERNAME` | 阿里云容器镜像仓库登录用户名 |
+| Secret | `ACR_PASSWORD` | 镜像仓库登录密码，不是阿里云账号密码 |
+| Secret | `SSH_PRIVATE_KEY` | 部署专用 SSH 私钥；公钥加入服务器授权列表 |
+| Secret | `SSH_KNOWN_HOSTS` | 通过已信任连接核对过指纹的服务器主机公钥记录 |
+| Variable | `ACR_REGISTRY` | ACR 控制台给出的登录域名，不带 `https://` |
+| Variable | `ACR_NAMESPACE` | 自己创建的镜像命名空间 |
+| Variable | `DEPLOY_HOST` | `101.200.180.5` |
+| Variable | `DEPLOY_PORT` | `22` |
+| Variable | `DEPLOY_USER` | 推荐部署专用用户；使用 Docker 权限等同拥有主机高权限 |
+
+ACR 创建 `blog-api`、`blog-web`、`blog-proxy` 三个仓库，分别对应 `api/Dockerfile`、`web/Dockerfile`、`Dockerfile.proxy`。镜像以 Git commit SHA 标记，服务器同时更新三个对应镜像，便于追溯和回滚。服务器需预先配置只读拉取凭据。数据库密码和生产 YAML 留在服务器，不打包进镜像、不提交 Git。
+
+### Workflow 要完成的步骤
+
+1. **检查**：`go generate ./cmd/server` 后检查 `api/docs` 无差异，执行 `go test ./...`；前后台分别执行 `pnpm install --frozen-lockfile` 和构建检查。
+2. **构建**：用各自 Dockerfile 构建 `linux/amd64` 镜像，登录 ACR，推送 `${提交SHA}` 标签。构建任务不使用生产数据库密码。
+3. **部署**：同一环境部署串行执行，SSH 校验主机密钥；服务器拉取三份镜像成功后才更新 Compose。运行迁移前备份数据库，更新后检查 API 健康状态。
+4. **回滚**：应用镜像可切回上一提交标签；数据库迁移必须单独判断兼容性，不能靠回滚镜像撤销迁移。
+
+### 当前服务器上线前仍需处理
+
+- 数据库 Compose 位于 `/opt/blog-infra`，API 需加入 `blog-backend` 网络，使用 `mysql:3306`、`redis:6379`；后端 YAML 的 `redis.password` 已接入 Go 客户端。
+- 现有 `compose.prod.yaml` 保留独占 80/443 的构建方案。当前服务器自动部署使用 `deploy/compose.yaml`，以 ACR 镜像运行，仅绑定 `127.0.0.1:6325/6326`，宝塔 Nginx 分别转发前台和后台。
+- `retniw.cc` 的 SSL 已配置；使用 `admin.retniw.cc` 还需对应证书。
+- 首次上线创建管理员、配置后端生产 YAML、数据备份及健康检查后，再启用 `push main` 自动发布；首次通过 `workflow_dispatch` 手动勾选 deploy，验证成功后再把仓库级 Actions Variable `ENABLE_AUTO_DEPLOY` 改为 `true`。
+
+参考：[GitHub 镜像发布文档](https://docs.github.com/en/actions/tutorials/publish-packages/publish-docker-images)、[Actions Secrets 配置](https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-secrets)。
+
+### 已准备的部署文件与首次运行
+
+| 文件 | 作用 |
+| --- | --- |
+| `.github/workflows/release.yml` | Go 测试、Swagger 一致性检查、三个镜像的构建推送及可选 SSH 部署。前后台构建失败会阻止部署。 |
+| `deploy/compose.yaml` | ACR 镜像编排，API 接入现有数据库网络，数据卷持久化。 |
+| `deploy/Caddyfile` | 容器内 HTTP 入口，由宝塔 Nginx 处理外部 HTTPS。 |
+| `deploy/release.sh` | 拉取镜像、备份、初始化管理员、更新服务并检查健康。 |
+
+服务器目录是 `/opt/blog`：`config.yaml` 保存生产配置，`state/bootstrap-admin.txt` 保存首次管理员密码，`backups/` 保存更新前备份，`releases/<SHA>/` 保存对应部署文件，`.env` 保存最近成功版本。脚本使用文件锁避免同时部署；失败会退出并保留备份，不自动回退数据库。文件备份在服务仍运行时复制，不能替代停写后的数据库与图片一致性备份；需定期检查磁盘并将备份复制到服务器之外。
+
+当前 ACR 登录域名是 `crpi-hbv9ky04safnech7.cn-beijing.personal.cr.aliyuncs.com`，命名空间为 `retniw`。服务端已配置 ACR 登录、独立部署 SSH 公钥和后端生产配置。GitHub 使用 `production` 环境 Secrets；`ENABLE_AUTO_DEPLOY` 是**仓库级** Variable，不能放在 environment 中，因为部署 job 的 if 在环境变量可用前就会求值。
+
+提交这些文件后，在仓库 Actions 选择 **Build and deploy blog → Run workflow**。第一次先不勾选 deploy，确认三个镜像均构建推送成功；域名入口准备好后，再勾选 deploy 执行首次上线。使用 nginx 反代时需要设置 `Host $host`、`X-Forwarded-Proto $scheme`、`X-Real-IP $remote_addr`，并关闭 API SSE 响应缓冲。前台上游 `http://127.0.0.1:6325`，后台上游 `http://127.0.0.1:6326`。新后台域名需单独有效证书，当前根域名证书不覆盖它。
+
+GitHub Actions 仍需首次实际运行才能确认 Runner 到 ACR 的推送、SSH 连接与完整部署；本地测试和服务器 ACR 登录验证不能代替该验收。

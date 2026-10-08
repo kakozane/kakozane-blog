@@ -1,6 +1,8 @@
 # 复制为 config.yaml，填写已有 MySQL 中的博客专用账号密码。
 server:
   port: 6324
+  # 开发模式默认开放文档；生产模式仅在此项为 true 时开放。
+  swagger_enabled: false
 mysql:
   host: 127.0.0.1
   port: 3306
@@ -9,6 +11,8 @@ mysql:
   password: "请填写博客专用账号密码"
 redis:
   address: 127.0.0.1:6379
+  # 生产 Redis 已启用认证，填写对应密码；本地无密码可留空。
+  password: ""
 media:
   directory: uploads
 auth:

@@ -1,0 +1,43 @@
+{
+	# HTTPS 由宝塔 Nginx 处理，容器内部使用 HTTP。
+	auto_https off
+}
+
+(api) {
+	handle /api/* {
+		reverse_proxy api:6324 {
+			# Nginx 必须覆盖这些头；宿主机端口仅监听 127.0.0.1。
+			header_up X-Forwarded-Proto {http.request.header.X-Forwarded-Proto}
+			header_up X-Real-IP {http.request.header.X-Real-IP}
+		}
+	}
+	handle_path /uploads/* {
+		root * /srv/uploads
+		header X-Content-Type-Options nosniff
+		file_server
+	}
+}
+
+:6325 {
+	encode zstd gzip
+	import api
+	@discovery path /sitemap.xml /feed.xml /notes/feed.xml /thinking/feed.xml /says/feed.xml /robots.txt
+	handle @discovery {
+		reverse_proxy api:6324
+	}
+	handle {
+		reverse_proxy web:6325 {
+			header_up X-Forwarded-Proto {http.request.header.X-Forwarded-Proto}
+		}
+	}
+}
+
+:6326 {
+	encode zstd gzip
+	import api
+	handle {
+		root * /srv/admin
+		try_files {path} /index.html
+		file_server
+	}
+}

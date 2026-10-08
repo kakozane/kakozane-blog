@@ -24,6 +24,13 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+//go:generate go tool swag init -g main.go -d .,../../internal/handler,../../internal/model --parseInternal -o ../../docs
+
+// @title Kakozane Blog API
+// @version 1.0
+// @description 博客 API。登录使用同源 HTTPS HttpOnly Cookie，前台和后台会话独立。先调用对应登录接口，再使用 Try it out；不使用 Bearer Token。当前文档覆盖健康检查、登录会话、文章及写作工作流。
+// @BasePath /api/v1
+// @schemes https
 func main() {
 	if err := run(); err != nil {
 		slog.Error("api stopped", "error", err)
@@ -55,7 +62,7 @@ func run() error {
 	}
 	defer db.Close()
 
-	redisClient := redis.NewClient(&redis.Options{Addr: cfg.Redis.Address})
+	redisClient := redis.NewClient(&redis.Options{Addr: cfg.Redis.Address, Password: cfg.Redis.Password})
 	defer redisClient.Close()
 
 	// 在入口处组装依赖，业务层不负责创建数据库连接。
@@ -91,7 +98,7 @@ func run() error {
 
 	server := &http.Server{
 		Addr:              net.JoinHostPort("", strconv.Itoa(cfg.Server.Port)),
-		Handler:           router.New(handler.NewHealthHandler(healthService), handler.NewAuthHandler(authService, cfg.Auth.SSOSites), handler.NewContentHandler(contentService), handler.NewUserHandler(userService), handler.NewCommentHandler(commentService), handler.NewLikeHandler(likeService, authService), handler.NewEventHandler(eventService), handler.NewFriendHandler(friendService), handler.NewProjectHandler(projectService), handler.NewPageHandler(pageService), handler.NewSayHandler(sayService), handler.NewMediaHandler(mediaService), handler.NewSiteHandler(siteService), handler.NewFeedHandler(feedService, sayService)),
+		Handler:           router.New(cfg.Server.SwaggerEnabled, handler.NewHealthHandler(healthService), handler.NewAuthHandler(authService, cfg.Auth.SSOSites), handler.NewContentHandler(contentService), handler.NewUserHandler(userService), handler.NewCommentHandler(commentService), handler.NewLikeHandler(likeService, authService), handler.NewEventHandler(eventService), handler.NewFriendHandler(friendService), handler.NewProjectHandler(projectService), handler.NewPageHandler(pageService), handler.NewSayHandler(sayService), handler.NewMediaHandler(mediaService), handler.NewSiteHandler(siteService), handler.NewFeedHandler(feedService, sayService)),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 	shutdownCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)

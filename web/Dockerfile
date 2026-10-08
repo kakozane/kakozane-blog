@@ -8,7 +8,7 @@ RUN pnpm install --frozen-lockfile
 # 构建 React Router 的浏览器资源和 SSR 服务端代码。
 FROM dependencies AS build
 COPY . .
-RUN pnpm build
+RUN pnpm typecheck && pnpm build
 
 # 运行时只保留生产依赖与构建产物。
 FROM node:24-alpine

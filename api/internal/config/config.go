@@ -19,7 +19,8 @@ type Config struct {
 		SSOSites []SSOSite `yaml:"sso_sites"`
 	} `yaml:"auth"`
 	Server struct {
-		Port int `yaml:"port"`
+		Port           int  `yaml:"port"`
+		SwaggerEnabled bool `yaml:"swagger_enabled"`
 	} `yaml:"server"`
 	MySQL struct {
 		Host     string `yaml:"host"`
@@ -29,7 +30,8 @@ type Config struct {
 		Password string `yaml:"password"`
 	} `yaml:"mysql"`
 	Redis struct {
-		Address string `yaml:"address"`
+		Address  string `yaml:"address"`
+		Password string `yaml:"password"`
 	} `yaml:"redis"`
 	Media struct {
 		Directory string `yaml:"directory"`

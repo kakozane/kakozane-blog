@@ -27,8 +27,61 @@ func (h *ContentHandler) PublicationStats(c *gin.Context) {
 	c.JSON(http.StatusOK, stats)
 }
 
-func (h *ContentHandler) ListPosts(c *gin.Context)    { h.listPosts(c, true, "post") }
-func (h *ContentHandler) ListNotes(c *gin.Context)    { h.listPosts(c, true, "note") }
+// ListPosts 内容列表。
+// @Summary 已发布内容列表
+// @Tags 公开内容
+// @Produce json
+// @Param page query int false "页码" default(1)
+// @Param pageSize query int false "每页数量，1～50" default(10)
+// @Param q query string false "搜索关键词"
+// @Param category query string false "分类 slug"
+// @Param tag query string false "标签 slug"
+// @Param year query int false "年份"
+// @Param month query string false "月份 YYYY-MM"
+// @Param sort query string false "默认最新" Enums(oldest,updated)
+// @Param pinFirst query string false "1 表示文章置顶优先"
+// @Param featured query string false "1 表示精选"
+// @Success 200 {object} object{items=[]model.Post,total=int,page=int,pageSize=int}
+// @Failure 400,401,503 {object} map[string]string
+// @Router /posts [get]
+func (h *ContentHandler) ListPosts(c *gin.Context) { h.listPosts(c, true, "post") }
+
+// ListNotes 内容列表。
+// @Summary 已发布内容列表
+// @Tags 公开内容
+// @Produce json
+// @Param page query int false "页码" default(1)
+// @Param pageSize query int false "每页数量，1～50" default(10)
+// @Param q query string false "搜索关键词"
+// @Param category query string false "分类 slug"
+// @Param tag query string false "标签 slug"
+// @Param year query int false "年份"
+// @Param month query string false "月份 YYYY-MM"
+// @Param sort query string false "默认最新" Enums(oldest,updated)
+// @Param pinFirst query string false "1 表示文章置顶优先"
+// @Param featured query string false "1 表示精选"
+// @Success 200 {object} object{items=[]model.Post,total=int,page=int,pageSize=int}
+// @Failure 400,401,503 {object} map[string]string
+// @Router /notes [get]
+func (h *ContentHandler) ListNotes(c *gin.Context) { h.listPosts(c, true, "note") }
+
+// ListThoughts 内容列表。
+// @Summary 已发布内容列表
+// @Tags 公开内容
+// @Produce json
+// @Param page query int false "页码" default(1)
+// @Param pageSize query int false "每页数量，1～50" default(10)
+// @Param q query string false "搜索关键词"
+// @Param category query string false "分类 slug"
+// @Param tag query string false "标签 slug"
+// @Param year query int false "年份"
+// @Param month query string false "月份 YYYY-MM"
+// @Param sort query string false "默认最新" Enums(oldest,updated)
+// @Param pinFirst query string false "1 表示文章置顶优先"
+// @Param featured query string false "1 表示精选"
+// @Success 200 {object} object{items=[]model.Post,total=int,page=int,pageSize=int}
+// @Failure 400,401,503 {object} map[string]string
+// @Router /thinking [get]
 func (h *ContentHandler) ListThoughts(c *gin.Context) { h.listPosts(c, true, "thought") }
 func (h *ContentHandler) ListNoteSeries(c *gin.Context) {
 	items, err := h.service.ListNoteSeries(c.Request.Context())
@@ -61,6 +114,23 @@ func (h *ContentHandler) TimelineMonths(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{"months": months})
 }
+
+// ListAdminPosts 内容列表。
+// @Summary 后台内容列表（需后台登录）
+// @Tags 文章管理
+// @Produce json
+// @Param page query int false "页码" default(1)
+// @Param pageSize query int false "每页数量，1～50" default(10)
+// @Param q query string false "搜索关键词"
+// @Param category query string false "分类 slug"
+// @Param tag query string false "标签 slug"
+// @Param year query int false "年份"
+// @Param month query string false "月份 YYYY-MM"
+// @Param kind query string false "内容类型" Enums(all,post,note,thought)
+// @Param status query string false "状态；trash 为回收站"
+// @Success 200 {object} object{items=[]model.Post,total=int,page=int,pageSize=int}
+// @Failure 400,401,503 {object} map[string]string
+// @Router /admin/posts [get]
 func (h *ContentHandler) ListAdminPosts(c *gin.Context) {
 	h.listPosts(c, false, c.DefaultQuery("kind", "all"))
 }
@@ -93,8 +163,34 @@ func (h *ContentHandler) listPosts(c *gin.Context, publishedOnly bool, kind stri
 	c.JSON(http.StatusOK, gin.H{"items": items, "total": total, "page": page, "pageSize": pageSize})
 }
 
-func (h *ContentHandler) GetPost(c *gin.Context)         { h.getPublished(c, "post") }
-func (h *ContentHandler) GetNote(c *gin.Context)         { h.getPublished(c, "note") }
+// GetPost 内容详情。
+// @Summary 内容详情
+// @Tags 公开内容
+// @Produce json
+// @Param slug path string true "内容标识"
+// @Success 200 {object} model.Post
+// @Failure 400,401,404,503 {object} map[string]string
+// @Router /posts/{slug} [get]
+func (h *ContentHandler) GetPost(c *gin.Context) { h.getPublished(c, "post") }
+
+// GetNote 内容详情。
+// @Summary 内容详情
+// @Tags 公开内容
+// @Produce json
+// @Param slug path string true "内容标识"
+// @Success 200 {object} model.Post
+// @Failure 400,401,404,503 {object} map[string]string
+// @Router /notes/{slug} [get]
+func (h *ContentHandler) GetNote(c *gin.Context) { h.getPublished(c, "note") }
+
+// GetThought 内容详情。
+// @Summary 内容详情
+// @Tags 公开内容
+// @Produce json
+// @Param slug path string true "内容标识"
+// @Success 200 {object} model.Post
+// @Failure 400,401,404,503 {object} map[string]string
+// @Router /thinking/{slug} [get]
 func (h *ContentHandler) GetThought(c *gin.Context)      { h.getPublished(c, "thought") }
 func (h *ContentHandler) RelatedPosts(c *gin.Context)    { h.related(c, "post") }
 func (h *ContentHandler) RelatedNotes(c *gin.Context)    { h.related(c, "note") }
@@ -122,6 +218,14 @@ func (h *ContentHandler) getPublished(c *gin.Context, kind string) {
 	c.JSON(http.StatusOK, item)
 }
 
+// GetAdminPost 内容详情。
+// @Summary 内容详情（需后台登录）
+// @Tags 文章管理
+// @Produce json
+// @Param id path int true "内容标识"
+// @Success 200 {object} model.Post
+// @Failure 400,401,404,503 {object} map[string]string
+// @Router /admin/posts/{id} [get]
 func (h *ContentHandler) GetAdminPost(c *gin.Context) {
 	id, ok := contentID(c)
 	if !ok {
@@ -135,8 +239,27 @@ func (h *ContentHandler) GetAdminPost(c *gin.Context) {
 	c.JSON(http.StatusOK, item)
 }
 
+// CreatePost 文章写入。
+// @Summary CreatePost（需后台登录，删除进入回收站）
+// @Tags 文章管理
+// @Produce json
+// @Accept json
+// @Param body body model.PostInput true "文章内容，更新时携带 version 防止覆盖"
+// @Success 201 {object} model.Post
+// @Failure 400,401,403,404,409,503 {object} map[string]string
+// @Router /admin/posts [post]
 func (h *ContentHandler) CreatePost(c *gin.Context) { h.savePost(c, 0) }
 
+// UpdatePost 文章写入。
+// @Summary UpdatePost（需后台登录，删除进入回收站）
+// @Tags 文章管理
+// @Produce json
+// @Param id path int true "文章 ID"
+// @Accept json
+// @Param body body model.PostInput true "文章内容，更新时携带 version 防止覆盖"
+// @Success 200 {object} model.Post
+// @Failure 400,401,403,404,409,503 {object} map[string]string
+// @Router /admin/posts/{id} [put]
 func (h *ContentHandler) UpdatePost(c *gin.Context) {
 	id, ok := contentID(c)
 	if ok {
@@ -163,6 +286,14 @@ func (h *ContentHandler) savePost(c *gin.Context, id int64) {
 	c.JSON(status, item)
 }
 
+// DeletePost 文章写入。
+// @Summary DeletePost（需后台登录，删除进入回收站）
+// @Tags 文章管理
+// @Produce json
+// @Param id path int true "文章 ID"
+// @Success 204 "已移入回收站"
+// @Failure 400,401,403,404,409,503 {object} map[string]string
+// @Router /admin/posts/{id} [delete]
 func (h *ContentHandler) DeletePost(c *gin.Context) {
 	id, ok := contentID(c)
 	if !ok {

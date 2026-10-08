@@ -6,8 +6,9 @@ import (
 	"github.com/kakozane/kakozane-blog/api/internal/service"
 )
 
-func New(healthHandler *handler.HealthHandler, authHandler *handler.AuthHandler, contentHandler *handler.ContentHandler, userHandler *handler.UserHandler, commentHandler *handler.CommentHandler, likeHandler *handler.LikeHandler, eventHandler *handler.EventHandler, friendHandler *handler.FriendHandler, projectHandler *handler.ProjectHandler, pageHandler *handler.PageHandler, sayHandler *handler.SayHandler, mediaHandler *handler.MediaHandler, siteHandler *handler.SiteHandler, feedHandler *handler.FeedHandler) *gin.Engine {
+func New(swaggerEnabled bool, healthHandler *handler.HealthHandler, authHandler *handler.AuthHandler, contentHandler *handler.ContentHandler, userHandler *handler.UserHandler, commentHandler *handler.CommentHandler, likeHandler *handler.LikeHandler, eventHandler *handler.EventHandler, friendHandler *handler.FriendHandler, projectHandler *handler.ProjectHandler, pageHandler *handler.PageHandler, sayHandler *handler.SayHandler, mediaHandler *handler.MediaHandler, siteHandler *handler.SiteHandler, feedHandler *handler.FeedHandler) *gin.Engine {
 	r := gin.Default()
+	registerSwagger(r, swaggerEnabled || gin.Mode() != gin.ReleaseMode)
 	r.GET("/sitemap.xml", feedHandler.Sitemap)
 	r.GET("/feed.xml", feedHandler.RSS)
 	r.GET("/notes/feed.xml", feedHandler.NotesRSS)

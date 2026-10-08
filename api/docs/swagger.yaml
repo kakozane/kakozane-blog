@@ -1,0 +1,1430 @@
+basePath: /api/v1
+definitions:
+  handler.loginRequest:
+    properties:
+      password:
+        type: string
+      username:
+        type: string
+    type: object
+  model.Post:
+    properties:
+      authorId:
+        type: integer
+      authorName:
+        type: string
+      categoryId:
+        type: integer
+      categoryName:
+        type: string
+      categorySlug:
+        type: string
+      contentMd:
+        type: string
+      coverUrl:
+        type: string
+      createdAt:
+        type: string
+      excerpt:
+        type: string
+      id:
+        type: integer
+      kind:
+        type: string
+      pinned:
+        type: boolean
+      publishedAt:
+        type: string
+      slug:
+        type: string
+      status:
+        type: string
+      tags:
+        items:
+          $ref: '#/definitions/model.Term'
+        type: array
+      title:
+        type: string
+      updatedAt:
+        type: string
+      version:
+        type: integer
+    type: object
+  model.PostInput:
+    properties:
+      categoryId:
+        type: integer
+      contentMd:
+        type: string
+      coverUrl:
+        type: string
+      excerpt:
+        type: string
+      kind:
+        type: string
+      pinned:
+        type: boolean
+      slug:
+        type: string
+      status:
+        type: string
+      tagIds:
+        items:
+          type: integer
+        type: array
+      title:
+        type: string
+      version:
+        type: integer
+    type: object
+  model.Revision:
+    properties:
+      createdAt:
+        type: string
+      id:
+        type: integer
+      snapshot:
+        $ref: '#/definitions/model.PostInput'
+    type: object
+  model.Term:
+    properties:
+      id:
+        type: integer
+      name:
+        type: string
+      slug:
+        type: string
+    type: object
+  model.WritingDraft:
+    properties:
+      key:
+        type: string
+      snapshot:
+        $ref: '#/definitions/model.PostInput'
+      updatedAt:
+        type: string
+      version:
+        type: integer
+    type: object
+info:
+  contact: {}
+  description: 博客 API。登录使用同源 HTTPS HttpOnly Cookie，前台和后台会话独立。先调用对应登录接口，再使用 Try it
+    out；不使用 Bearer Token。当前文档覆盖健康检查、登录会话、文章及写作工作流。
+  title: Kakozane Blog API
+  version: "1.0"
+paths:
+  /admin/auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Cookie 由浏览器自动管理；写操作必须通过同源 HTTPS 发起。
+      parameters:
+      - description: 账号密码
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handler.loginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: user 信息；仅后台包含 role、permissions
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "426":
+          description: Upgrade Required
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "429":
+          description: Too Many Requests
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Service Unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: 后台认证 - Login
+      tags:
+      - 后台认证
+  /admin/auth/logout:
+    post:
+      description: Cookie 由浏览器自动管理；写操作必须通过同源 HTTPS 发起。
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: 已退出
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "426":
+          description: Upgrade Required
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "429":
+          description: Too Many Requests
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Service Unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: 后台认证 - Logout
+      tags:
+      - 后台认证
+  /admin/auth/me:
+    get:
+      description: Cookie 由浏览器自动管理；写操作必须通过同源 HTTPS 发起。
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: user 信息；仅后台包含 role、permissions
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "426":
+          description: Upgrade Required
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "429":
+          description: Too Many Requests
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Service Unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: 后台认证 - Me
+      tags:
+      - 后台认证
+  /admin/drafts/{key}:
+    delete:
+      parameters:
+      - description: post-ID、note-ID、post-new 或 note-new
+        in: path
+        name: key
+        required: true
+        type: string
+      - description: 当前草稿版本
+        in: query
+        name: version
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: 操作成功
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Service Unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: DeleteDraft（需后台登录）
+      tags:
+      - 草稿与版本
+    get:
+      parameters:
+      - description: post-ID、note-ID、post-new 或 note-new
+        in: path
+        name: key
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.WritingDraft'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Service Unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Draft（需后台登录）
+      tags:
+      - 草稿与版本
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: post-ID、note-ID、post-new 或 note-new
+        in: path
+        name: key
+        required: true
+        type: string
+      - description: 携带当前草稿 version，首次为 0
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.WritingDraft'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.WritingDraft'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Service Unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: SaveDraft（需后台登录）
+      tags:
+      - 草稿与版本
+  /admin/posts:
+    get:
+      parameters:
+      - default: 1
+        description: 页码
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: 每页数量，1～50
+        in: query
+        name: pageSize
+        type: integer
+      - description: 搜索关键词
+        in: query
+        name: q
+        type: string
+      - description: 分类 slug
+        in: query
+        name: category
+        type: string
+      - description: 标签 slug
+        in: query
+        name: tag
+        type: string
+      - description: 年份
+        in: query
+        name: year
+        type: integer
+      - description: 月份 YYYY-MM
+        in: query
+        name: month
+        type: string
+      - description: 内容类型
+        enum:
+        - all
+        - post
+        - note
+        - thought
+        in: query
+        name: kind
+        type: string
+      - description: 状态；trash 为回收站
+        in: query
+        name: status
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            properties:
+              items:
+                items:
+                  $ref: '#/definitions/model.Post'
+                type: array
+              page:
+                type: integer
+              pageSize:
+                type: integer
+              total:
+                type: integer
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Service Unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: 后台内容列表（需后台登录）
+      tags:
+      - 文章管理
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 文章内容，更新时携带 version 防止覆盖
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.PostInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/model.Post'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Service Unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: CreatePost（需后台登录，删除进入回收站）
+      tags:
+      - 文章管理
+  /admin/posts/{id}:
+    delete:
+      parameters:
+      - description: 文章 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: 已移入回收站
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Service Unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: DeletePost（需后台登录，删除进入回收站）
+      tags:
+      - 文章管理
+    get:
+      parameters:
+      - description: 内容标识
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Post'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Service Unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: 内容详情（需后台登录）
+      tags:
+      - 文章管理
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: 文章 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 文章内容，更新时携带 version 防止覆盖
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.PostInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Post'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Service Unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: UpdatePost（需后台登录，删除进入回收站）
+      tags:
+      - 文章管理
+  /admin/posts/{id}/purge:
+    delete:
+      parameters:
+      - description: 文章 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: 操作成功
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Service Unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: PurgePost（需后台登录）
+      tags:
+      - 草稿与版本
+  /admin/posts/{id}/restore:
+    post:
+      parameters:
+      - description: 文章 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: 操作成功
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Service Unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: RestorePost（需后台登录）
+      tags:
+      - 草稿与版本
+  /admin/posts/{id}/revisions:
+    get:
+      parameters:
+      - description: 文章 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            properties:
+              items:
+                items:
+                  $ref: '#/definitions/model.Revision'
+                type: array
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Service Unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Revisions（需后台登录）
+      tags:
+      - 草稿与版本
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Cookie 由浏览器自动管理；写操作必须通过同源 HTTPS 发起。
+      parameters:
+      - description: 账号密码
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handler.loginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: user 信息；仅后台包含 role、permissions
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "426":
+          description: Upgrade Required
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "429":
+          description: Too Many Requests
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Service Unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: 前台认证 - Login
+      tags:
+      - 前台认证
+  /auth/logout:
+    post:
+      description: Cookie 由浏览器自动管理；写操作必须通过同源 HTTPS 发起。
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: 已退出
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "426":
+          description: Upgrade Required
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "429":
+          description: Too Many Requests
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Service Unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: 前台认证 - Logout
+      tags:
+      - 前台认证
+  /auth/me:
+    get:
+      description: Cookie 由浏览器自动管理；写操作必须通过同源 HTTPS 发起。
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: user 信息；仅后台包含 role、permissions
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "426":
+          description: Upgrade Required
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "429":
+          description: Too Many Requests
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Service Unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: 前台认证 - Me
+      tags:
+      - 前台认证
+  /health:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Service Unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: 检查 MySQL 和 Redis 连通性
+      tags:
+      - 系统
+  /notes:
+    get:
+      parameters:
+      - default: 1
+        description: 页码
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: 每页数量，1～50
+        in: query
+        name: pageSize
+        type: integer
+      - description: 搜索关键词
+        in: query
+        name: q
+        type: string
+      - description: 分类 slug
+        in: query
+        name: category
+        type: string
+      - description: 标签 slug
+        in: query
+        name: tag
+        type: string
+      - description: 年份
+        in: query
+        name: year
+        type: integer
+      - description: 月份 YYYY-MM
+        in: query
+        name: month
+        type: string
+      - description: 默认最新
+        enum:
+        - oldest
+        - updated
+        in: query
+        name: sort
+        type: string
+      - description: 1 表示文章置顶优先
+        in: query
+        name: pinFirst
+        type: string
+      - description: 1 表示精选
+        in: query
+        name: featured
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            properties:
+              items:
+                items:
+                  $ref: '#/definitions/model.Post'
+                type: array
+              page:
+                type: integer
+              pageSize:
+                type: integer
+              total:
+                type: integer
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Service Unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: 已发布内容列表
+      tags:
+      - 公开内容
+  /notes/{slug}:
+    get:
+      parameters:
+      - description: 内容标识
+        in: path
+        name: slug
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Post'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Service Unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: 内容详情
+      tags:
+      - 公开内容
+  /posts:
+    get:
+      parameters:
+      - default: 1
+        description: 页码
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: 每页数量，1～50
+        in: query
+        name: pageSize
+        type: integer
+      - description: 搜索关键词
+        in: query
+        name: q
+        type: string
+      - description: 分类 slug
+        in: query
+        name: category
+        type: string
+      - description: 标签 slug
+        in: query
+        name: tag
+        type: string
+      - description: 年份
+        in: query
+        name: year
+        type: integer
+      - description: 月份 YYYY-MM
+        in: query
+        name: month
+        type: string
+      - description: 默认最新
+        enum:
+        - oldest
+        - updated
+        in: query
+        name: sort
+        type: string
+      - description: 1 表示文章置顶优先
+        in: query
+        name: pinFirst
+        type: string
+      - description: 1 表示精选
+        in: query
+        name: featured
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            properties:
+              items:
+                items:
+                  $ref: '#/definitions/model.Post'
+                type: array
+              page:
+                type: integer
+              pageSize:
+                type: integer
+              total:
+                type: integer
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Service Unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: 已发布内容列表
+      tags:
+      - 公开内容
+  /posts/{slug}:
+    get:
+      parameters:
+      - description: 内容标识
+        in: path
+        name: slug
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Post'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Service Unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: 内容详情
+      tags:
+      - 公开内容
+  /thinking:
+    get:
+      parameters:
+      - default: 1
+        description: 页码
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: 每页数量，1～50
+        in: query
+        name: pageSize
+        type: integer
+      - description: 搜索关键词
+        in: query
+        name: q
+        type: string
+      - description: 分类 slug
+        in: query
+        name: category
+        type: string
+      - description: 标签 slug
+        in: query
+        name: tag
+        type: string
+      - description: 年份
+        in: query
+        name: year
+        type: integer
+      - description: 月份 YYYY-MM
+        in: query
+        name: month
+        type: string
+      - description: 默认最新
+        enum:
+        - oldest
+        - updated
+        in: query
+        name: sort
+        type: string
+      - description: 1 表示文章置顶优先
+        in: query
+        name: pinFirst
+        type: string
+      - description: 1 表示精选
+        in: query
+        name: featured
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            properties:
+              items:
+                items:
+                  $ref: '#/definitions/model.Post'
+                type: array
+              page:
+                type: integer
+              pageSize:
+                type: integer
+              total:
+                type: integer
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Service Unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: 已发布内容列表
+      tags:
+      - 公开内容
+  /thinking/{slug}:
+    get:
+      parameters:
+      - description: 内容标识
+        in: path
+        name: slug
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Post'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Service Unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: 内容详情
+      tags:
+      - 公开内容
+schemes:
+- https
+swagger: "2.0"

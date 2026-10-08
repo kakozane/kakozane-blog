@@ -31,11 +31,68 @@ func NewAuthHandler(authService *service.AuthService, sites []config.SSOSite) *A
 	return &AuthHandler{service: authService, ssoSites: sites}
 }
 
-func (h *AuthHandler) FrontLogin(c *gin.Context)  { h.login(c, service.ScopeFront) }
-func (h *AuthHandler) AdminLogin(c *gin.Context)  { h.login(c, service.ScopeAdmin) }
-func (h *AuthHandler) FrontMe(c *gin.Context)     { h.me(c, service.ScopeFront) }
-func (h *AuthHandler) AdminMe(c *gin.Context)     { h.me(c, service.ScopeAdmin) }
+// FrontLogin 前台认证。
+// @Summary 前台认证 - Login
+// @Description Cookie 由浏览器自动管理；写操作必须通过同源 HTTPS 发起。
+// @Tags 前台认证
+// @Produce json
+// @Accept json
+// @Param body body loginRequest true "账号密码"
+// @Success 200 {object} map[string]interface{} "user 信息；仅后台包含 role、permissions"
+// @Failure 401,403,426,429,503 {object} map[string]string
+// @Router /auth/login [post]
+func (h *AuthHandler) FrontLogin(c *gin.Context) { h.login(c, service.ScopeFront) }
+
+// AdminLogin 后台认证。
+// @Summary 后台认证 - Login
+// @Description Cookie 由浏览器自动管理；写操作必须通过同源 HTTPS 发起。
+// @Tags 后台认证
+// @Produce json
+// @Accept json
+// @Param body body loginRequest true "账号密码"
+// @Success 200 {object} map[string]interface{} "user 信息；仅后台包含 role、permissions"
+// @Failure 401,403,426,429,503 {object} map[string]string
+// @Router /admin/auth/login [post]
+func (h *AuthHandler) AdminLogin(c *gin.Context) { h.login(c, service.ScopeAdmin) }
+
+// FrontMe 前台认证。
+// @Summary 前台认证 - Me
+// @Description Cookie 由浏览器自动管理；写操作必须通过同源 HTTPS 发起。
+// @Tags 前台认证
+// @Produce json
+// @Success 200 {object} map[string]interface{} "user 信息；仅后台包含 role、permissions"
+// @Failure 401,403,426,429,503 {object} map[string]string
+// @Router /auth/me [get]
+func (h *AuthHandler) FrontMe(c *gin.Context) { h.me(c, service.ScopeFront) }
+
+// AdminMe 后台认证。
+// @Summary 后台认证 - Me
+// @Description Cookie 由浏览器自动管理；写操作必须通过同源 HTTPS 发起。
+// @Tags 后台认证
+// @Produce json
+// @Success 200 {object} map[string]interface{} "user 信息；仅后台包含 role、permissions"
+// @Failure 401,403,426,429,503 {object} map[string]string
+// @Router /admin/auth/me [get]
+func (h *AuthHandler) AdminMe(c *gin.Context) { h.me(c, service.ScopeAdmin) }
+
+// FrontLogout 前台认证。
+// @Summary 前台认证 - Logout
+// @Description Cookie 由浏览器自动管理；写操作必须通过同源 HTTPS 发起。
+// @Tags 前台认证
+// @Produce json
+// @Success 204 "已退出"
+// @Failure 401,403,426,429,503 {object} map[string]string
+// @Router /auth/logout [post]
 func (h *AuthHandler) FrontLogout(c *gin.Context) { h.logout(c, service.ScopeFront) }
+
+// AdminLogout 后台认证。
+// @Summary 后台认证 - Logout
+// @Description Cookie 由浏览器自动管理；写操作必须通过同源 HTTPS 发起。
+// @Tags 后台认证
+// @Produce json
+// @Success 204 "已退出"
+// @Failure 401,403,426,429,503 {object} map[string]string
+// @Router /admin/auth/logout [post]
 func (h *AuthHandler) AdminLogout(c *gin.Context) { h.logout(c, service.ScopeAdmin) }
 
 func (h *AuthHandler) RequireAdmin(c *gin.Context) {
