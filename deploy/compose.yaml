@@ -2,7 +2,7 @@
 name: blog-production
 services:
   api:
-    image: ${ACR_REGISTRY:?}/${ACR_NAMESPACE:?}/blog-api:${IMAGE_TAG:?}
+    image: ${ACR_REGISTRY:?}/${ACR_NAMESPACE:?}/blog-api:${API_IMAGE_TAG:?}
     restart: unless-stopped
     environment:
       GIN_MODE: release
@@ -22,7 +22,7 @@ services:
       retries: 12
       start_period: 30s
   web:
-    image: ${ACR_REGISTRY:?}/${ACR_NAMESPACE:?}/blog-web:${IMAGE_TAG:?}
+    image: ${ACR_REGISTRY:?}/${ACR_NAMESPACE:?}/blog-web:${WEB_IMAGE_TAG:?}
     restart: unless-stopped
     environment:
       NODE_ENV: production
@@ -31,7 +31,7 @@ services:
     depends_on:
       api: {condition: service_healthy}
   proxy:
-    image: ${ACR_REGISTRY:?}/${ACR_NAMESPACE:?}/blog-proxy:${IMAGE_TAG:?}
+    image: ${ACR_REGISTRY:?}/${ACR_NAMESPACE:?}/blog-proxy:${PROXY_IMAGE_TAG:?}
     restart: unless-stopped
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro

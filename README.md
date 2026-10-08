@@ -312,9 +312,31 @@ server:
 
 ## GitHub Actions 自动部署方案
 
-建议流程：`main` 提交 → GitHub 执行测试和构建 → 推送三个镜像到个人 ACR 仓库 → 服务器通过 SSH 拉取同一提交的镜像 → Compose 更新服务 → 健康检查。已添加 `.github/workflows/release.yaml`：推送 main 自动检查和构建镜像；生产部署由仓库变量 `ENABLE_AUTO_DEPLOY` 控制，首次默认关闭，也可在 Actions 手动勾选 deploy。
+流程：`main` 提交 → 对比线上各服务版本 → 检查和构建选中服务 → 推送镜像到个人 ACR 仓库 → 服务器通过 SSH 拉取选中镜像 → Compose 仅更新选中服务 → 健康检查。已添加 `.github/workflows/release.yaml`：推送 main 自动检查和构建镜像；生产部署由仓库变量 `ENABLE_AUTO_DEPLOY` 控制，首次默认关闭，也可在 Actions 手动勾选 deploy。
 
 服务器只有约 2 GB 内存，构建放在 GitHub Runner 上；Docker 镜像加速器仅帮助下载公共基础镜像，不能替代存放自己构建镜像的仓库。
+
+### 按项目构建与部署
+
+Actions → **Build and deploy blog → Run workflow** 的 `service` 可选：
+
+| 选项 | 构建、部署范围 |
+| --- | --- |
+| `auto`（默认） | 对比服务器上次成功部署的各服务 SHA，更新所有有改动的服务 |
+| `all` | 强制构建并更新 api、web、proxy |
+| `api` | Go 后端，包括 bootstrap 程序 |
+| `web` | 博客 SSR 前台 |
+| `proxy` | 管理后台 + Caddy，它们目前共用一个镜像 |
+
+勾选 deploy 或开启 `ENABLE_AUTO_DEPLOY=true` 才会部署；否则只构建推送。自动模式按 `api/`、`web/`、`admin/` 等路径选择服务；`Dockerfile.proxy`、根目录 `Caddyfile`、`.dockerignore`、`deploy/Caddyfile` 影响 proxy。README 等文档修改本身不会触发镜像构建，但之前尚未上线的应用改动仍会被选中。跨项目移动文件会同时检查来源和目标项目。
+
+首次上线、版本记录缺失/旧提交不可读取，以及 `deploy/compose.yaml`、`deploy/release.sh`、`scripts/plan-release.py` 变化时，强制全量更新（包括手动选择单个服务时），避免新旧编排混用。因此本次部署机制升级首次运行仍会构建全部镜像。手动只选一个服务不会自动发布其他业务改动；若前后端接口必须同步升级，请选择 `all` 或 `auto`。
+
+计划阶段需要 SSH 读取服务器 `.env` 中的版本白名单，即使仅构建也需要服务器可连接；无法连接时流程失败，不猜测版本。比较的是成功部署版本而非上一条 Git 提交，因此关闭自动部署期间积累的改动、被排队替换的提交也不会漏掉。未部署前重复运行 auto，仍会选择这些服务，并复用构建缓存。
+
+部署只拉取、重建选中的容器；未选中的容器不重建。发布后会让 Caddy 重新加载配置以刷新上游连接，并检查前台、后台和 API 健康。所有发布仍保留原来的数据库与图片备份；失败不更新成功版本记录，也不自动回滚已变更的容器。排查失败后优先用 `all` 完整发布以恢复一致状态。
+
+本地验证：`python3 scripts/check-release.py`。新流程尚需实际 GitHub Actions 运行验证 ACR 推送与服务器更新。
 
 ### GitHub 配置位置
 
@@ -332,13 +354,13 @@ server:
 | Variable | `DEPLOY_PORT` | `22` |
 | Variable | `DEPLOY_USER` | 推荐部署专用用户；使用 Docker 权限等同拥有主机高权限 |
 
-ACR 创建 `blog-api`、`blog-web`、`blog-proxy` 三个仓库，分别对应 `api/Dockerfile`、`web/Dockerfile`、`Dockerfile.proxy`。镜像以 Git commit SHA 标记，服务器同时更新三个对应镜像，便于追溯和回滚。服务器需预先配置只读拉取凭据。数据库密码和生产 YAML 留在服务器，不打包进镜像、不提交 Git。
+ACR 创建 `blog-api`、`blog-web`、`blog-proxy` 三个仓库，分别对应 `api/Dockerfile`、`web/Dockerfile`、`Dockerfile.proxy`。镜像以 Git commit SHA 标记，服务器分别记录 api/web/proxy 的版本，未选中服务保留原来的镜像。服务器需预先配置只读拉取凭据。数据库密码和生产 YAML 留在服务器，不打包进镜像、不提交 Git。
 
 ### Workflow 要完成的步骤
 
-1. **检查**：`go generate ./cmd/server` 后检查 `api/docs` 无差异，执行 `go test ./...`；前后台分别执行 `pnpm install --frozen-lockfile` 和构建检查。
+1. **检查**：仅选中 api 时执行后端检查：`go generate ./cmd/server` 后检查 `api/docs` 无差异，执行 `go test ./...`；选中的前端项目在镜像构建时执行 `pnpm install --frozen-lockfile` 和构建检查。
 2. **构建**：用各自 Dockerfile 构建 `linux/amd64` 镜像，登录 ACR，推送 `${提交SHA}` 标签。构建任务不使用生产数据库密码。
-3. **部署**：同一环境部署串行执行，SSH 校验主机密钥；服务器拉取三份镜像成功后才更新 Compose。运行迁移前备份数据库，更新后检查 API 健康状态。
+3. **部署**：同一环境部署串行执行，SSH 校验主机密钥；服务器拉取选中镜像成功后才更新 Compose，使用 `--no-deps` 避免更新未选中依赖。运行迁移前备份数据库，更新后检查 API 健康状态。
 4. **回滚**：应用镜像可切回上一提交标签；数据库迁移必须单独判断兼容性，不能靠回滚镜像撤销迁移。
 
 ### 当前服务器上线前仍需处理
@@ -354,12 +376,14 @@ ACR 创建 `blog-api`、`blog-web`、`blog-proxy` 三个仓库，分别对应 `a
 
 | 文件 | 作用 |
 | --- | --- |
-| `.github/workflows/release.yaml` | Go 测试、Swagger 一致性检查、三个镜像的构建推送及可选 SSH 部署。前后台构建失败会阻止部署。 |
+| `.github/workflows/release.yaml` | 按服务选择 Go 测试、Swagger 一致性检查、镜像构建推送及可选 SSH 部署。前后台构建失败会阻止部署。 |
+| `scripts/plan-release.py` | 对比各服务的线上版本，输出动态构建矩阵。 |
+| `scripts/check-release.py` | 本地验证服务选择和部署脚本，不连接线上服务器。 |
 | `deploy/compose.yaml` | ACR 镜像编排，API 接入现有数据库网络，数据卷持久化。 |
 | `deploy/Caddyfile` | 容器内 HTTP 入口，由宝塔 Nginx 处理外部 HTTPS。 |
 | `deploy/release.sh` | 拉取镜像、备份、初始化管理员、更新服务并检查健康。 |
 
-服务器目录是 `/opt/blog`：`config.yaml` 保存生产配置，`state/bootstrap-admin.txt` 保存首次管理员密码，`backups/` 保存更新前备份，`releases/<SHA>/` 保存对应部署文件，`.env` 保存最近成功版本。脚本使用文件锁避免同时部署；失败会退出并保留备份，不自动回退数据库。文件备份在服务仍运行时复制，不能替代停写后的数据库与图片一致性备份；需定期检查磁盘并将备份复制到服务器之外。
+服务器目录是 `/opt/blog`：`config.yaml` 保存生产配置，`state/bootstrap-admin.txt` 保存首次管理员密码，`backups/` 保存更新前备份，`releases/<SHA>/` 保存对应部署文件，`.env` 用 `API_IMAGE_TAG`、`WEB_IMAGE_TAG`、`PROXY_IMAGE_TAG` 分别保存各服务最近成功版本；`current-release` 仅记录最近发布操作的提交，不能用它代替各服务镜像版本。旧版单一 `IMAGE_TAG` 会在下次成功部署时自动迁移。脚本使用文件锁避免同时部署；失败会退出并保留备份，不自动回退数据库。文件备份在服务仍运行时复制，不能替代停写后的数据库与图片一致性备份；需定期检查磁盘并将备份复制到服务器之外。
 
 当前 ACR 登录域名是 `crpi-hbv9ky04safnech7.cn-beijing.personal.cr.aliyuncs.com`，命名空间为 `retniw`。服务端已配置 ACR 登录、独立部署 SSH 公钥和后端生产配置。GitHub 使用 `production` 环境 Secrets；`ENABLE_AUTO_DEPLOY` 是**仓库级** Variable，不能放在 environment 中，因为部署 job 的 if 在环境变量可用前就会求值。
 

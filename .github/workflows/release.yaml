@@ -1,5 +1,5 @@
 # GitHub 会读取 .github/workflows/ 下的 .yaml / .yml 文件，将其识别为工作流。
-# 总流程：检查代码 → 并行构建三个镜像并推送 ACR → 满足条件时 SSH 部署。
+# 总流程：检查代码 → 按改动并行构建所需镜像并推送 ACR → 满足条件时 SSH 部署。
 # 构建运行在 GitHub 提供的临时机器上；博客最终运行在自己的阿里云服务器。
 # 这里编排步骤，真正更新服务器的命令在 deploy/release.sh 中。
 name: Build and deploy blog
@@ -11,7 +11,12 @@ on:
     branches: [main]
   workflow_dispatch:
     inputs:
-      # 手动运行时显示的复选框，其值通过 inputs.deploy 读取。
+      # 自动模式对比线上版本；手动模式可指定一个服务或全部。
+      service:
+        description: '服务：auto 自动检测；proxy 为管理后台和 Caddy'
+        type: choice
+        default: auto
+        options: [auto, all, api, web, proxy]
       # 不勾选时不会主动请求部署，但 ENABLE_AUTO_DEPLOY=true 仍会允许部署。
       deploy:
         description: '构建后部署到生产服务器'
@@ -40,8 +45,48 @@ concurrency:
 # ${{ secrets.NAME }} 读取保密值，${{ vars.NAME }} 读取普通配置。
 # ${{ github.sha }} 是 GitHub 自动提供的本次提交完整 SHA，用于标记镜像版本。
 jobs:
+  # 按服务器上次成功部署的各镜像 SHA 比较，覆盖多次提交但尚未上线的改动。
+  # 即使只构建不部署，也使用此基准；SSH 不通时失败，不猜测线上版本。
+  plan:
+    runs-on: ubuntu-latest
+    environment: production
+    outputs:
+      matrix: ${{ steps.select.outputs.matrix }}
+      services: ${{ steps.select.outputs.services }}
+      has_changes: ${{ steps.select.outputs.has_changes }}
+      api: ${{ steps.select.outputs.api }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Read deployed versions
+        env:
+          DEPLOY_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+          DEPLOY_PORT: ${{ vars.DEPLOY_PORT }}
+          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/id_ed25519
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/id_ed25519 ~/.ssh/known_hosts
+          # 只读取版本字段；不能输出整个服务器 .env，更不能将它作为 Shell 脚本执行。
+          ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" \
+            "if test -f /opt/blog/.env; then sed -n -E '/^(IMAGE_TAG|API_IMAGE_TAG|WEB_IMAGE_TAG|PROXY_IMAGE_TAG)=[0-9a-f]{40}$/p' /opt/blog/.env; fi" > deployed-versions.env
+      - name: Select services
+        id: select
+        env:
+          SERVICE_CHOICE: ${{ inputs.service || 'auto' }}
+        run: python3 scripts/plan-release.py
+      - name: Remove runner SSH key
+        if: always()
+        run: rm -f ~/.ssh/id_ed25519
+
   # 第一阶段：检查后端和生成文档。失败后不会开始构建和部署。
   check:
+    needs: plan
+    if: needs.plan.outputs.api == 'true'
     # GitHub 托管的 Ubuntu Runner，不是自己的阿里云服务器。
     runs-on: ubuntu-latest
     steps:
@@ -64,32 +109,20 @@ jobs:
           # 执行后端全部 Go 包的测试。
           go test ./...
 
-  # 第二阶段：检查通过后，使用矩阵创建三个独立的构建任务。
+  # 第二阶段：仅为选中的服务创建构建任务；纯前端变更可跳过 Go 检查。
   build:
-    needs: check
+    needs: [plan, check]
+    if: ${{ !cancelled() && needs.plan.result == 'success' && needs.plan.outputs.has_changes == 'true' && (needs.check.result == 'success' || needs.check.result == 'skipped') }}
     runs-on: ubuntu-latest
     # 关联名为 production 的 GitHub Environment，从中读取 Secrets 和 Variables。
     # 这只是 GitHub 配置分组，不会创建服务器，也不代表此任务正在部署。
     environment: production
     strategy:
       # 一个镜像失败时，其余镜像继续构建，便于一次看到所有构建结果。
-      # 但部署任务仍需三个镜像全部成功才会继续。
+      # 但部署任务仍需选中的镜像全部成功才会继续。
       fail-fast: false
-      matrix:
-        include:
-          # image：ACR 仓库名称；context：Docker 可读取的构建文件范围；file：Dockerfile。
-          # Go 后端：编译 server 和首次初始化管理员使用的 bootstrap 程序。
-          - image: blog-api
-            context: ./api
-            file: ./api/Dockerfile
-          # 博客前台：类型检查、构建 React Router SSR，镜像中包含 Node 运行环境。
-          - image: blog-web
-            context: ./web
-            file: ./web/Dockerfile
-          # 后台与代理：构建管理后台静态文件，再与 Caddy 一起放入最终镜像。
-          - image: blog-proxy
-            context: .
-            file: ./Dockerfile.proxy
+      # Python 输出动态矩阵：api=Go，web=SSR 前台，proxy=后台静态文件+Caddy。
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
     steps:
       # 每个矩阵任务使用独立 Runner，因此都需要检出代码、安装构建工具并登录 ACR。
       - uses: actions/checkout@v7.0.1
@@ -114,20 +147,20 @@ jobs:
           provenance: false
           sbom: false
           # 地址格式：仓库域名/命名空间/镜像名:提交SHA。
-          # 三个镜像使用同一个 SHA，服务器可以按精确版本更新，而不是依赖 latest。
+          # 选中镜像使用本次 SHA；未选中服务继续使用各自上次成功部署的 SHA。
           tags: ${{ vars.ACR_REGISTRY }}/${{ vars.ACR_NAMESPACE }}/${{ matrix.image }}:${{ github.sha }}
           # 读写 GitHub Actions 构建缓存；各镜像独立 scope，避免互相覆盖缓存。
           # mode=max 缓存中间构建阶段，以便复用下载依赖、编译等耗时步骤。
           cache-from: type=gha,scope=${{ matrix.image }}
           cache-to: type=gha,mode=max,scope=${{ matrix.image }}
 
-  # 第三阶段：三个镜像成功推送后，按条件更新生产服务器。
+  # 第三阶段：选中镜像成功推送后，按条件更新生产服务器。
   deploy:
-    needs: build
+    needs: [plan, build]
     # 必须同时满足：分支为 main，并且“自动部署开关开启”或“手动勾选 deploy”。
     # 不满足时显示 skipped（跳过），不代表失败。
     # vars 返回字符串，所以比较 'true'；布尔型输入 inputs.deploy 则比较 true。
-    if: github.ref == 'refs/heads/main' && (vars.ENABLE_AUTO_DEPLOY == 'true' || inputs.deploy == true)
+    if: ${{ !cancelled() && needs.build.result == 'success' && github.ref == 'refs/heads/main' && (vars.ENABLE_AUTO_DEPLOY == 'true' || inputs.deploy == true) }}
     runs-on: ubuntu-latest
     environment: production
     steps:
@@ -153,9 +186,11 @@ jobs:
           DEPLOY_PORT: ${{ vars.DEPLOY_PORT }}
           DEPLOY_USER: ${{ vars.DEPLOY_USER }}
           RELEASE_SHA: ${{ github.sha }}
+          SERVICES: ${{ needs.plan.outputs.services }}
         run: |
           # SHA 会被拼入远程路径和命令，先限制为 40 位十六进制字符串。
           [[ "$RELEASE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$SERVICES" =~ ^(api|web|proxy)(,(api|web|proxy))*$ ]]
           target="$DEPLOY_USER@$DEPLOY_HOST"
           # BatchMode 禁止交互式密码提示；StrictHostKeyChecking 强制核对主机公钥。
           # ssh 使用小写 -p 指定端口，scp 使用大写 -P。
@@ -165,7 +200,7 @@ jobs:
           scp -o BatchMode=yes -o StrictHostKeyChecking=yes -P "$DEPLOY_PORT" deploy/compose.yaml deploy/Caddyfile deploy/release.sh "$target:/opt/blog/releases/$RELEASE_SHA/"
           # 远程脚本负责：拉取镜像、备份、初始化管理员、更新容器、检查服务并记录版本。
           # 该脚本返回非零退出码，SSH 和当前任务都会失败；目前不会自动回滚。
-          ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -p "$DEPLOY_PORT" "$target" "bash /opt/blog/releases/$RELEASE_SHA/release.sh $RELEASE_SHA"
+          ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -p "$DEPLOY_PORT" "$target" "bash /opt/blog/releases/$RELEASE_SHA/release.sh $RELEASE_SHA $SERVICES"
       - name: Remove runner SSH key
         # 即使前面的部署失败，也尝试清理 Runner 中的私钥文件。
         if: always()
