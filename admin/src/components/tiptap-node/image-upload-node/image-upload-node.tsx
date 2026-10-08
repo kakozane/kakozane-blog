@@ -85,7 +85,7 @@ export interface UploadOptions {
 function useFileUpload(options: UploadOptions) {
   const [fileItems, setFileItems] = useState<FileItem[]>([])
 
-  const uploadFile = async (file: File): Promise<string | null> => {
+  const uploadFile = async (file: File): Promise<{ file: File; url: string } | null> => {
     if (file.size > options.maxSize) {
       const error = new Error(
         `File size exceeds maximum allowed (${options.maxSize / 1024 / 1024}MB)`
@@ -135,7 +135,7 @@ function useFileUpload(options: UploadOptions) {
           )
         )
         options.onSuccess?.(url)
-        return url
+        return { file, url }
       }
 
       return null
@@ -156,7 +156,7 @@ function useFileUpload(options: UploadOptions) {
     }
   }
 
-  const uploadFiles = async (files: File[]): Promise<string[]> => {
+  const uploadFiles = async (files: File[]): Promise<{ file: File; url: string }[]> => {
     if (!files || files.length === 0) {
       options.onError?.(new Error("No files to upload"))
       return []
@@ -176,7 +176,7 @@ function useFileUpload(options: UploadOptions) {
     const results = await Promise.all(uploadPromises)
 
     // Filter out null results (failed uploads)
-    return results.filter((url): url is string => url !== null)
+    return results.filter((result) => result !== null)
   }
 
   const removeFileItem = (fileId: string) => {
@@ -451,15 +451,15 @@ export const ImageUploadNode: React.FC<NodeViewProps> = (props) => {
     useFileUpload(uploadOptions)
 
   const handleUpload = async (files: File[]) => {
-    const urls = await uploadFiles(files)
+    const uploaded = await uploadFiles(files)
 
-    if (urls.length > 0) {
+    if (uploaded.length > 0) {
       const pos = props.getPos()
 
       if (isValidPosition(pos)) {
-        const imageNodes = urls.map((url, index) => {
+        const imageNodes = uploaded.map(({ file, url }) => {
           const filename =
-            files[index]?.name.replace(/\.[^/.]+$/, "") || "unknown"
+            file.name.replace(/\.[^/.]+$/, "") || "unknown"
           return {
             type: extension.options.type,
             attrs: {

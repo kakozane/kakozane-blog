@@ -20,3 +20,16 @@ test('official editor formatting is rendered with a restricted HTML allowlist', 
  assert.deepEqual(articleHeadings(source,3).map(h=>h.title),['第一章','第二章'])
  assert.notEqual(articleHeadings(source,3)[0].id,articleHeadings(source,3)[1].id)
 })
+
+test('rich HTML preserves all alert variants, including formatted markers', () => {
+ for (const kind of ['NOTE', 'TIP', 'IMPORTANT', 'WARNING', 'CAUTION']) {
+  for (const marker of [`[!${kind}]\n正文`, `<u>[!${kind}]\n正文</u>`, `[!${kind}]<br>正文`]) {
+   const source=RICH_HTML_PREFIX+`<blockquote><p>${marker}</p></blockquote>`
+   const html=renderToStaticMarkup(createElement(ReactMarkdown,{rehypePlugins:[rehypeRaw,richHTMLFormatting,[rehypeSanitize,richHTMLSchema]]},source))
+   assert(html.includes(`markdown-alert-${kind.toLowerCase()}`),html)
+   assert(html.includes('markdown-alert-title'),html)
+   assert(html.includes('正文'),html)
+   assert(!html.includes(`[!${kind}]`),html)
+  }
+ }
+})

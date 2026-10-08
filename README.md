@@ -259,3 +259,5 @@ go run ./cmd/seed-demo --apply  # 使用 config.yaml 中的数据库连接写入
 右上角太阳 / 月亮按钮切换整个后台主题，默认浅色，选择保存在当前浏览器。使用 Ant Design 的 `defaultAlgorithm` / `darkAlgorithm` 与 ProLayout 的 `light` / `realDark`，编辑器与后台共用主题，编辑器按钮也会同步切换全局主题。实现见 `admin/src/theme/AdminTheme.tsx`。
 
 已启动开发服务且已安装 Playwright 时，可运行 `node scripts/check-admin-theme.cjs` 回归验证默认主题、切换、刷新持久化及编辑器文字颜色；已有独立 Playwright 安装可通过 `PLAYWRIGHT_MODULE_PATH` 指定。脚本默认从本地忽略文件 `api/bootstrap-admin.txt` 读取测试账号，也支持 `ADMIN_CREDENTIALS_FILE` 和 `ADMIN_ORIGIN`。
+
+编辑器回归检查：`node scripts/check-editor-regressions.cjs`（同样支持上述 Playwright 路径、账号文件及域名变量）。验证提示框转换为富文本后的展示，以及多图上传部分失败时的文件名对应关系；上传接口使用模拟响应，不写入文章或媒体数据。
