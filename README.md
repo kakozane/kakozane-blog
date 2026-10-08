@@ -261,3 +261,22 @@ go run ./cmd/seed-demo --apply  # 使用 config.yaml 中的数据库连接写入
 已启动开发服务且已安装 Playwright 时，可运行 `node scripts/check-admin-theme.cjs` 回归验证默认主题、切换、刷新持久化及编辑器文字颜色；已有独立 Playwright 安装可通过 `PLAYWRIGHT_MODULE_PATH` 指定。脚本默认从本地忽略文件 `api/bootstrap-admin.txt` 读取测试账号，也支持 `ADMIN_CREDENTIALS_FILE` 和 `ADMIN_ORIGIN`。
 
 编辑器回归检查：`node scripts/check-editor-regressions.cjs`（同样支持上述 Playwright 路径、账号文件及域名变量）。验证提示框转换为富文本后的展示，以及多图上传部分失败时的文件名对应关系；上传接口使用模拟响应，不写入文章或媒体数据。
+
+### 内容保护与云端草稿
+
+- **版本历史**：文章和手记每次手动保存记录完整快照（正文、标题、链接、分类、标签等），相同快照不重复记录。编辑页可查看最近 100 个版本，与当前编辑内容并排预览，恢复到编辑框后手动保存。恢复时默认选择草稿，避免自动覆盖公开内容。升级前的文章从首次修改时开始记录原始版本。
+- **回收站**：文章、手记和思考删除后进入内容管理 → 回收站，前台、搜索、订阅及相关公开接口不再展示。评论、点赞和版本记录仍保留，恢复后为草稿。彻底删除有二次确认，同时删除关联评论、点赞、版本及对应的云端草稿。
+- **云端自动保存**：文章和手记停止输入约 1.5 秒后，将编辑内容独立保存到 MySQL，不修改已发布正文。按登录账号和文章隔离；每个账号另有一份新文章草稿、一份新手记草稿。重新打开编辑页可恢复或丢弃。仍保留本地草稿作为断网兜底。
+- **并发保护**：云端草稿采用版本号比较更新；文章正式保存也携带加载时版本号。检测到另一窗口修改时拒绝覆盖并保留本地内容。遇到冲突请先导出当前 Markdown，再刷新核对服务器内容、按需合并；不要盲目覆盖新版本。
+- **Markdown 导入／导出**：编辑页导入单个 `.md` / `.markdown` 文件（上限 1 MB），替换编辑框正文后需要手动保存；导出当前编辑内容。富文本格式通过 Markdown 支持的内嵌 HTML 和格式标记无损保留，图片保留原 URL，不打包图片文件；导入不会自动更改分类、标签和发布状态。
+- **站内回复通知**：回复通过审核后，通知被回复评论的作者；不通知本人对自己的回复，同一回复反复审核不会重复通知。前台头部显示未读数量（每分钟及回到页面时刷新），「我的账号」中可分页查看并跳转到对应评论、标记已读。评论撤回审核、删除，或文章不再公开时，相关通知不再展示。本期为站内通知，不发送邮件。
+
+迁移 `api/migrations/020_writing_workflow.sql` 会在 API 启动时自动执行，增加文章版本号、历史表、云端草稿表和回复通知表，无需手动改库。生产环境升级前应备份数据库。
+
+接口（均为 `/api/v1` 下）：
+
+- 后台：`GET /admin/posts/:id/revisions`、`POST /admin/posts/:id/restore`、`DELETE /admin/posts/:id/purge`；列表 `status=trash` 查看回收站。
+- 后台草稿：`GET/PUT/DELETE /admin/drafts/:key`，key 为 `post-文章ID` / `note-手记ID` / `post-new` / `note-new`，读写只作用于当前账号；删除需提交 `?version=当前草稿版本号`。
+- 前台通知：`GET /auth/notifications?page=1`、`PUT /auth/notifications/:id/read`，仅限当前登录读者。
+
+回归验证：在**本地开发环境**运行 `node scripts/check-writing-workflow.cjs`（复用 `PLAYWRIGHT_MODULE_PATH`、`ADMIN_CREDENTIALS_FILE`、`ADMIN_ORIGIN`，另支持 `FRONT_ORIGIN`）。会创建临时文章、测试账号和评论，并在结束时清理，覆盖版本冲突、云端隔离、回收站、审核通知、浏览器草稿恢复和 Markdown 文件往返；不要指向生产环境。

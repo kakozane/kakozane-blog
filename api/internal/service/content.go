@@ -77,7 +77,7 @@ func (s *ContentService) ListPosts(ctx context.Context, filter model.PostFilter)
 		(filter.Kind != "post" && filter.Kind != "note" && filter.Kind != "thought" && filter.Kind != "all") ||
 		(filter.FeaturedOnly && filter.Kind != "note") ||
 		(filter.Sort != "" && (filter.Sort != "oldest" && filter.Sort != "updated" || !filter.PublishedOnly)) ||
-		(filter.Status != "" && filter.Status != "draft" && filter.Status != "published") ||
+		(filter.Status != "" && filter.Status != "draft" && filter.Status != "published" && filter.Status != "trash") ||
 		(filter.CategorySlug != "" && !validSlug(filter.CategorySlug)) || (filter.TagSlug != "" && !validSlug(filter.TagSlug)) {
 		return nil, 0, ErrInvalidInput
 	}

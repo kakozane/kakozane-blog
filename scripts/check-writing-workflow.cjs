@@ -1,0 +1,120 @@
+// 本地集成检查：创建临时文章、读者和评论，finally 清理。不要指向生产环境。
+const { chromium } = require(process.env.PLAYWRIGHT_MODULE_PATH || 'playwright')
+const fs = require('node:fs'), path = require('node:path'), assert = require('node:assert/strict'), crypto = require('node:crypto')
+const A = process.env.ADMIN_ORIGIN || 'https://admin.dev.kakozane.icu', F = process.env.FRONT_ORIGIN || 'https://dev.kakozane.icu'
+const credentials = Object.fromEntries(fs.readFileSync(process.env.ADMIN_CREDENTIALS_FILE || path.resolve(__dirname,'../api/bootstrap-admin.txt'),'utf8').trim().split('\n').map(line => {const i=line.indexOf(': ');return [line.slice(0,i),line.slice(i+2)]}))
+async function main() {
+ const browser=await chromium.launch({channel:'chrome',headless:true,args:['--no-proxy-server']})
+ const admin=await browser.newContext({ignoreHTTPSErrors:true}), reader=await browser.newContext({ignoreHTTPSErrors:true})
+ const prefix='workflow'+Date.now();let post, userID, draftVersion=0
+ async function api(context,origin,url,method='GET',data,expected=200) {
+  const response=await context.request.fetch(origin+url,{method,data,headers:{Origin:origin}})
+  assert.equal(response.status(),expected,`${method} ${url}: ${await response.text()}`)
+  return expected===204 ? null : response.json()
+ }
+ const postBase='/api/v1/admin/posts'
+ const draftKey='post-new'
+ // Use a separate temporary admin for drafts so existing user's cloud draft cannot be touched.
+ let writer, writerID
+ try {
+  await api(admin,A,'/api/v1/admin/auth/login','POST',credentials)
+  const password=crypto.randomBytes(24).toString('hex')
+  const user=await api(admin,A,'/api/v1/admin/users','POST',{username:prefix,displayName:'工作流测试',role:'reader',password},201);userID=user.id
+  const owner=await api(admin,A,'/api/v1/admin/users','POST',{username:prefix+'a',displayName:'草稿测试',role:'admin',password},201);writerID=owner.id
+  writer=await browser.newContext({ignoreHTTPSErrors:true})
+  await api(writer,A,'/api/v1/admin/auth/login','POST',{username:prefix+'a',password})
+  const input={kind:'post',title:'工作流检查',slug:prefix,excerpt:'',contentMd:'# 版本一',status:'published',coverUrl:'',pinned:false,categoryId:null,tagIds:[]}
+  post=await api(admin,A,postBase,'POST',input,201)
+  const firstVersion=post.version
+  let history=await api(admin,A,`${postBase}/${post.id}/revisions`);assert.equal(history.items.length,1)
+  let draft=await api(writer,A,`/api/v1/admin/drafts/${draftKey}`);assert.equal(draft.version,0)
+  draft=await api(writer,A,`/api/v1/admin/drafts/${draftKey}`,'PUT',{version:0,snapshot:{...input,contentMd:'未发布的编辑内容',version:firstVersion}});draftVersion=draft.version
+  await api(writer,A,`/api/v1/admin/drafts/${draftKey}`,'PUT',{version:0,snapshot:input},409)
+  assert.equal((await api(admin,A,`${postBase}/${post.id}`)).contentMd,input.contentMd)
+  const anotherDraft=await api(admin,A,`/api/v1/admin/drafts/post-${post.id}`);assert.equal(anotherDraft.version,0)
+  post=await api(admin,A,`${postBase}/${post.id}`,'PUT',{...input,contentMd:'# 版本二',version:firstVersion})
+  await api(admin,A,`${postBase}/${post.id}`,'PUT',{...input,version:firstVersion},409)
+  history=await api(admin,A,`${postBase}/${post.id}/revisions`);assert.equal(history.items.length,2);assert.equal(history.items[1].snapshot.contentMd,'# 版本一')
+  await api(reader,F,'/api/v1/auth/login','POST',{username:prefix,password})
+  const parent=await api(reader,F,`/api/v1/posts/${prefix}/comments`,'POST',{body:'测试原评论'},201)
+  await api(admin,A,`/api/v1/admin/comments/${parent.id}/status`,'PUT',{status:'approved'})
+  await api(writer,F,'/api/v1/auth/login','POST',{username:prefix+'a',password})
+  const reply=await api(writer,F,`/api/v1/posts/${prefix}/comments`,'POST',{body:'测试回复',parentId:parent.id},201)
+  assert.equal((await api(reader,F,'/api/v1/auth/notifications')).items.length,0)
+  await api(admin,A,`/api/v1/admin/comments/${reply.id}/status`,'PUT',{status:'approved'})
+  await api(admin,A,`/api/v1/admin/comments/${reply.id}/status`,'PUT',{status:'approved'})
+  let inbox=await api(reader,F,'/api/v1/auth/notifications');assert.equal(inbox.unread,1);assert.equal(inbox.items[0].commentId,reply.id)
+  await api(reader,F,`/api/v1/auth/notifications/${inbox.items[0].id}/read`,'PUT',undefined,204)
+  assert.equal((await api(reader,F,'/api/v1/auth/notifications')).unread,0)
+  const inboxPage=await reader.newPage()
+  await inboxPage.goto(F+'/account#notifications')
+  await inboxPage.getByRole('button',{name:'查看回复',exact:true}).click()
+  await inboxPage.waitForURL(url=>url.hash===`#comment-${reply.id}`)
+  await inboxPage.locator(`#comment-${reply.id}`).waitFor()
+  console.log('PASS 站内通知列表及回复定位')
+  await api(admin,A,`${postBase}/${post.id}`,'DELETE',undefined,204)
+  await api(reader,F,`/api/v1/posts/${prefix}`,'GET',undefined,404)
+  assert.equal((await api(reader,F,'/api/v1/auth/notifications')).items.length,0)
+  assert((await api(admin,A,`${postBase}?status=trash`)).items.some(item=>item.id===post.id))
+  await api(admin,A,`${postBase}/${post.id}/restore`,'POST',undefined,204)
+  assert.equal((await api(admin,A,`${postBase}/${post.id}`)).status,'draft')
+  assert.equal((await api(admin,A,`${postBase}/${post.id}/revisions`)).items.length,2)
+  const page=await admin.newPage()
+  page.on('pageerror',error=>console.error('Browser error:',error.message))
+  page.on('dialog',dialog=>dialog.accept())
+  await page.goto(A+`/posts/${post.id}/edit`)
+  await page.getByRole('textbox',{name:'正文富文本编辑器'}).waitFor()
+  await page.getByText('云端自动保存已就绪',{exact:false}).waitFor()
+  await page.getByLabel('标题',{exact:true}).fill('云端自动保存验证')
+  await page.getByRole('textbox',{name:'正文富文本编辑器'}).fill('浏览器云端草稿正文')
+  await page.getByText('云端已保存',{exact:false}).waitFor()
+  const editorDraft=await api(admin,A,`/api/v1/admin/drafts/post-${post.id}`)
+  assert(editorDraft.snapshot.contentMd.includes('浏览器云端草稿正文'))
+  assert.notEqual((await api(admin,A,`${postBase}/${post.id}`)).title,'云端自动保存验证')
+  await page.reload()
+  await page.getByRole('button',{name:'丢弃本地草稿',exact:true}).click()
+  await page.getByRole('button',{name:'恢复云端草稿',exact:true}).click()
+  assert.equal(await page.getByLabel('标题',{exact:true}).inputValue(),'云端自动保存验证')
+  await page.getByRole('button',{name:'版本历史',exact:true}).click()
+  await page.getByRole('dialog').waitFor()
+  await page.getByRole('button',{name:/^预\s*览$/}).last().click()
+  await page.getByRole('heading',{name:'版本一',exact:true}).waitFor()
+  await page.getByRole('button',{name:'恢复到编辑框',exact:true}).last().click()
+  await page.getByRole('button',{name:/^确\s*定$/}).click()
+  await page.getByRole('textbox',{name:'正文富文本编辑器'}).waitFor()
+  assert((await page.getByRole('textbox',{name:'正文富文本编辑器'}).innerText()).includes('版本一'))
+  const save=page.waitForResponse(r=>r.url().endsWith(`/api/v1/admin/posts/${post.id}`)&&r.request().method()==='PUT')
+  await page.getByRole('button',{name:'保存文章',exact:true}).click()
+  assert((await save).ok())
+  assert.equal((await api(admin,A,`${postBase}/${post.id}`)).contentMd,'# 版本一')
+  assert.equal((await api(admin,A,`/api/v1/admin/drafts/post-${post.id}`)).version,0)
+  await page.waitForURL(A+'/posts')
+  await page.goto(A+`/posts/${post.id}/edit`)
+  await page.getByRole('textbox',{name:'正文富文本编辑器'}).waitFor()
+  const markdown='# 导入验证\n\n**保留加粗**'
+  await page.locator('input[type=file]').first().setInputFiles({name:'import.md',mimeType:'text/markdown',buffer:Buffer.from(markdown)})
+  await page.getByRole('heading',{name:'导入验证',exact:true}).first().waitFor()
+  const downloaded=page.waitForEvent('download')
+  await page.getByRole('button',{name:'导出 Markdown',exact:true}).click()
+  const stream=await (await downloaded).createReadStream();const chunks=[]
+  for await(const chunk of stream) chunks.push(chunk)
+  assert.equal(Buffer.concat(chunks).toString('utf8'),markdown)
+  await page.getByText('云端已保存',{exact:false}).waitFor()
+  await page.close()
+  console.log('PASS Markdown 文件导入/导出与正文一致')
+  console.log('PASS 浏览器自动保存、刷新恢复云端草稿、版本预览与恢复保存')
+  console.log('PASS 云端草稿隔离与冲突保护、版本历史、回收站恢复、审核后回复通知与已读')
+ } finally {
+  if(post){
+   await admin.request.delete(A+`${postBase}/${post.id}`,{headers:{Origin:A}})
+   const purged=await admin.request.delete(A+`${postBase}/${post.id}/purge`,{headers:{Origin:A}})
+   assert.equal(purged.status(),204,'测试内容清理失败')
+   assert.equal((await admin.request.get(A+`${postBase}/${post.id}`)).status(),404)
+   assert.equal((await api(admin,A,`/api/v1/admin/drafts/post-${post.id}`)).version,0)
+  }
+  if(writer && draftVersion) await writer.request.delete(A+`/api/v1/admin/drafts/${draftKey}?version=${draftVersion}`,{headers:{Origin:A}})
+  for(const id of [userID,writerID]) if(id) await admin.request.delete(A+`/api/v1/admin/users/${id}`,{headers:{Origin:A}})
+  await browser.close()
+ }
+}
+main().catch(error=>{console.error(error);process.exitCode=1})

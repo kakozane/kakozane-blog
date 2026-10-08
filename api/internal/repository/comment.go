@@ -174,8 +174,31 @@ func (r *CommentRepository) EditOwn(ctx context.Context, postID, userID, comment
 }
 
 func (r *CommentRepository) SetStatus(ctx context.Context, id int64, status string) (model.Comment, error) {
-	result, err := r.db.ExecContext(ctx, "UPDATE comments SET status = ?, pinned = CASE WHEN ? = 'approved' THEN pinned ELSE FALSE END WHERE id = ?", status, status, id)
-	if err := affected(result, err); err != nil {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return model.Comment{}, err
+	}
+	defer tx.Rollback()
+	var existing int64
+	if err := tx.QueryRowContext(ctx, "SELECT id FROM comments WHERE id=? FOR UPDATE", id).Scan(&existing); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return model.Comment{}, ErrNotFound
+		}
+		return model.Comment{}, err
+	}
+	_, err = tx.ExecContext(ctx, "UPDATE comments SET status = ?, pinned = CASE WHEN ? = 'approved' THEN pinned ELSE FALSE END WHERE id = ?", status, status, id)
+	if err != nil {
+		return model.Comment{}, err
+	}
+	if status == "approved" {
+		_, err = tx.ExecContext(ctx, `INSERT IGNORE INTO reply_notifications(user_id,comment_id)
+   SELECT parent.user_id,c.id FROM comments c JOIN comments parent ON parent.id=c.parent_id
+   WHERE c.id=? AND parent.user_id IS NOT NULL AND parent.status='approved' AND parent.user_id<>c.user_id`, id)
+		if err != nil {
+			return model.Comment{}, err
+		}
+	}
+	if err := tx.Commit(); err != nil {
 		return model.Comment{}, err
 	}
 	return r.ByID(ctx, id)

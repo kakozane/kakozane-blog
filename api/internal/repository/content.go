@@ -127,6 +127,9 @@ func termTable(kind string) (string, error) {
 
 func (r *ContentRepository) ListPosts(ctx context.Context, filter model.PostFilter) ([]model.Post, int64, error) {
 	where := []string{"1 = 1"}
+	if filter.Status != "trash" {
+		where = append(where, "p.status <> 'trash'")
+	}
 	args := []any{}
 	if filter.PublishedOnly {
 		where = append(where, "p.status = 'published'")
@@ -175,7 +178,7 @@ func (r *ContentRepository) ListPosts(ctx context.Context, filter model.PostFilt
 	if withContent {
 		columns += ", p.content_md"
 	}
-	query := "SELECT " + columns + ", p.cover_url, p.status, p.pinned, p.published_at, p.created_at, p.updated_at" + from + " ORDER BY " + order + " LIMIT ? OFFSET ?"
+	query := "SELECT " + columns + ", p.cover_url, p.status, p.pinned, p.published_at, p.created_at, p.updated_at, p.version" + from + " ORDER BY " + order + " LIMIT ? OFFSET ?"
 	rows, err := r.db.QueryContext(ctx, query, append(args, filter.PageSize, (filter.Page-1)*filter.PageSize)...)
 	if err != nil {
 		return nil, 0, err
@@ -276,7 +279,7 @@ func (r *ContentRepository) PublishedPostBySlug(ctx context.Context, slug string
 func (r *ContentRepository) RelatedPosts(ctx context.Context, post model.Post) ([]model.Post, error) {
 	// ponytail: 在读取时计算共同标签；文章规模使查询变慢时再加缓存或预计算。
 	// 先按共同标签数、同分类排序；不足三篇时自动用同类型的新内容补齐。
-	query := `SELECT p.id, p.author_id, u.display_name, p.category_id, c.name, c.slug, p.kind, p.title, p.slug, p.excerpt, p.cover_url, p.status, p.pinned, p.published_at, p.created_at, p.updated_at
+	query := `SELECT p.id, p.author_id, u.display_name, p.category_id, c.name, c.slug, p.kind, p.title, p.slug, p.excerpt, p.cover_url, p.status, p.pinned, p.published_at, p.created_at, p.updated_at, p.version
 		FROM posts p JOIN users u ON u.id = p.author_id LEFT JOIN categories c ON c.id = p.category_id
 		WHERE p.status = 'published' AND p.kind = ? AND p.id <> ?
 		ORDER BY (SELECT COUNT(*) FROM post_tags candidate JOIN post_tags current ON current.tag_id = candidate.tag_id AND current.post_id = ? WHERE candidate.post_id = p.id) DESC,
@@ -325,7 +328,7 @@ func (r *ContentRepository) AdjacentPosts(ctx context.Context, post model.Post) 
 }
 
 func (r *ContentRepository) post(ctx context.Context, condition string, value any) (model.Post, error) {
-	query := "SELECT p.id, p.author_id, u.display_name, p.category_id, c.name, c.slug, p.kind, p.title, p.slug, p.excerpt, p.content_md, p.cover_url, p.status, p.pinned, p.published_at, p.created_at, p.updated_at FROM posts p JOIN users u ON u.id = p.author_id LEFT JOIN categories c ON c.id = p.category_id WHERE " + condition
+	query := "SELECT p.id, p.author_id, u.display_name, p.category_id, c.name, c.slug, p.kind, p.title, p.slug, p.excerpt, p.content_md, p.cover_url, p.status, p.pinned, p.published_at, p.created_at, p.updated_at, p.version FROM posts p JOIN users u ON u.id = p.author_id LEFT JOIN categories c ON c.id = p.category_id WHERE " + condition
 	item, err := scanPost(r.db.QueryRowContext(ctx, query, value).Scan, true)
 	if errors.Is(err, sql.ErrNoRows) {
 		return model.Post{}, ErrNotFound
@@ -333,6 +336,7 @@ func (r *ContentRepository) post(ctx context.Context, condition string, value an
 	if err != nil {
 		return model.Post{}, err
 	}
+
 	items := []model.Post{item}
 	if err := r.loadTags(ctx, items); err != nil {
 		return model.Post{}, err
@@ -349,7 +353,7 @@ func scanPost(scan func(...any) error, withContent bool) (model.Post, error) {
 	if withContent {
 		fields = append(fields, &item.ContentMD)
 	}
-	fields = append(fields, &item.CoverURL, &item.Status, &item.Pinned, &publishedAt, &item.CreatedAt, &item.UpdatedAt)
+	fields = append(fields, &item.CoverURL, &item.Status, &item.Pinned, &publishedAt, &item.CreatedAt, &item.UpdatedAt, &item.Version)
 	if err := scan(fields...); err != nil {
 		return model.Post{}, err
 	}
@@ -411,7 +415,21 @@ func (r *ContentRepository) SavePost(ctx context.Context, id, authorID int64, in
 			return 0, err
 		}
 	} else {
-		result, err := tx.ExecContext(ctx, `UPDATE posts SET category_id = ?, kind = ?, title = ?, slug = ?, excerpt = ?, content_md = ?, cover_url = ?, status = ?, pinned = ?,
+		var current int64
+		var status string
+		if err := tx.QueryRowContext(ctx, "SELECT version, status FROM posts WHERE id = ? FOR UPDATE", id).Scan(&current, &status); err != nil {
+			return 0, err
+		}
+		if status == "trash" {
+			return 0, ErrNotFound
+		}
+		if input.Version != nil && current != *input.Version {
+			return 0, ErrStaleVersion
+		}
+		if err := snapshotPost(ctx, tx, id); err != nil {
+			return 0, err
+		}
+		result, err := tx.ExecContext(ctx, `UPDATE posts SET version = version + 1, category_id = ?, kind = ?, title = ?, slug = ?, excerpt = ?, content_md = ?, cover_url = ?, status = ?, pinned = ?,
 			published_at = CASE WHEN ? = 'published' THEN COALESCE(published_at, CURRENT_TIMESTAMP) ELSE published_at END WHERE id = ?`,
 			input.CategoryID, input.Kind, input.Title, input.Slug, input.Excerpt, input.ContentMD, input.CoverURL, input.Status, input.Pinned, input.Status, id)
 		if err := affected(result, err); err != nil {
@@ -426,6 +444,9 @@ func (r *ContentRepository) SavePost(ctx context.Context, id, authorID int64, in
 			return 0, err
 		}
 	}
+	if err := snapshotPost(ctx, tx, id); err != nil {
+		return 0, err
+	}
 	if err := tx.Commit(); err != nil {
 		return 0, err
 	}
@@ -433,7 +454,7 @@ func (r *ContentRepository) SavePost(ctx context.Context, id, authorID int64, in
 }
 
 func (r *ContentRepository) DeletePost(ctx context.Context, id int64) error {
-	result, err := r.db.ExecContext(ctx, "DELETE FROM posts WHERE id = ?", id)
+	result, err := r.db.ExecContext(ctx, "UPDATE posts SET status = 'trash', version = version + 1 WHERE id = ? AND status <> 'trash'", id)
 	return affected(result, err)
 }
 

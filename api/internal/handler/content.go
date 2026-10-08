@@ -245,6 +245,8 @@ func contentID(c *gin.Context) (int64, bool) {
 
 func contentError(c *gin.Context, err error) {
 	switch {
+	case errors.Is(err, repository.ErrStaleVersion):
+		c.JSON(http.StatusConflict, gin.H{"error": "内容已在其他窗口更新，请先重新载入，当前草稿仍保留"})
 	case errors.Is(err, repository.ErrNotFound):
 		c.JSON(http.StatusNotFound, gin.H{"error": "内容不存在"})
 	case errors.Is(err, service.ErrInvalidInput):

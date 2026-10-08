@@ -2,7 +2,7 @@ import type { Post, PostInput, PostList, Term } from '../types/content'
 
 const adminApi = '/api/v1/admin'
 
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
+export async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const response = await fetch(path, {
     credentials: 'same-origin',
     ...options,

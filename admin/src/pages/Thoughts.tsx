@@ -12,7 +12,7 @@ export default function Thoughts() {
   const [editing, setEditing] = useState<Post | null>(null)
   const [open, setOpen] = useState(false)
   const [body, setBody] = useState('')
-  const [status, setStatus] = useState<Post['status']>('draft')
+  const [status, setStatus] = useState<'draft' | 'published'>('draft')
   const [saving, setSaving] = useState(false)
 
   const refresh = useCallback(async () => {
@@ -27,7 +27,7 @@ export default function Thoughts() {
   function edit(item?: Post) {
     setEditing(item ?? null)
     setBody(item?.contentMd ?? '')
-    setStatus(item?.status ?? 'draft')
+    setStatus(item?.status === 'published' ? 'published' : 'draft')
     setOpen(true)
   }
 
@@ -53,7 +53,7 @@ export default function Thoughts() {
   async function remove(id: number) {
     try {
       await deletePost(id)
-      message.success('思考已删除')
+      message.success('思考已移入回收站')
       await refresh()
     } catch (cause) { message.error(cause instanceof Error ? cause.message : '删除失败') }
   }
@@ -62,7 +62,7 @@ export default function Thoughts() {
     { title: '内容', render: (_, item) => <span>{item.excerpt || item.title}</span> },
     { title: '状态', dataIndex: 'status', width: 100, render: (value: Post['status']) => <Tag color={value === 'published' ? 'green' : 'default'}>{value === 'published' ? '已发布' : '草稿'}</Tag> },
     { title: '更新于', dataIndex: 'updatedAt', width: 180, render: (value: string) => new Date(value).toLocaleString('zh-CN') },
-    { title: '操作', width: 150, render: (_, item) => <Space><Button onClick={() => edit(item)} size="small" type="link">编辑</Button><Popconfirm title="删除这则思考？" description="删除后无法恢复" onConfirm={() => void remove(item.id)}><Button danger size="small" type="link">删除</Button></Popconfirm></Space> },
+    { title: '操作', width: 150, render: (_, item) => <Space><Button onClick={() => edit(item)} size="small" type="link">编辑</Button><Popconfirm title="删除这则思考？" description="移入回收站后可以恢复" onConfirm={() => void remove(item.id)}><Button danger size="small" type="link">删除</Button></Popconfirm></Space> },
   ]
 
   return <section className="admin-page">

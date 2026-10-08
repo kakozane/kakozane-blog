@@ -1,3 +1,4 @@
+import { NotificationInbox } from "../components/notification-inbox";
 import { useState, type FormEvent } from "react";
 import { Link, redirect, useLoaderData } from "react-router";
 
@@ -61,6 +62,7 @@ export default function Account() {
       <SiteHeader />
       <main className="simple-page account-page">
         <h1>我的账号</h1>
+        <NotificationInbox />
         <p>账号：{user.username}</p>
         {message && <p className="account-message" role="alert">{message}</p>}
         <section>

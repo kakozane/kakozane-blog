@@ -1,6 +1,8 @@
 import { Alert, Button, Card, Form, Input, Modal, Select, Space, Switch, Typography, message } from 'antd'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams, useRouteLoaderData } from 'react-router'
+import { useCloudDraft } from '../hooks/useCloudDraft'
+import WritingTools from '../components/WritingTools'
 import { getPost, listTerms, savePost } from '../api/content'
 import UnsavedChangesDialog from '../components/UnsavedChangesDialog'
 import RichTextEditor from '../components/RichTextEditor'
@@ -13,7 +15,7 @@ import type { PostInput, Term } from '../types/content'
 
 const emptyPost: PostInput = { kind: 'post', title: '', slug: '', excerpt: '', contentMd: '', coverUrl: '', status: 'draft', pinned: false, categoryId: null, tagIds: [] }
 
-export default function PostEditor({ kind }: { kind: 'post' | 'note' }) {
+function PostEditorForm({ kind }: { kind: 'post' | 'note' }) {
   const label = kind === 'note' ? '手记' : '文章'
   const base = kind === 'note' ? '/notes' : '/posts'
   const { id } = useParams()
@@ -28,6 +30,8 @@ export default function PostEditor({ kind }: { kind: 'post' | 'note' }) {
   const [saving, setSaving] = useState(false)
   const [uploadingImage, setUploadingImage] = useState(false)
   const [dirty, setDirty] = useState(false)
+  const [postVersion, setPostVersion] = useState<number | undefined>(undefined)
+  const cloud = useCloudDraft(`${kind}-${postId ?? 'new'}`)
   const [serverUpdatedAt, setServerUpdatedAt] = useState<string | null>(null)
   const backup = useDraftBackup<PostInput>(`kakozane:admin-draft:v1:${admin.id}:${kind}:${postId ?? 'new'}`)
   const setBaseUpdatedAt = backup.setBaseUpdatedAt
@@ -45,8 +49,10 @@ export default function PostEditor({ kind }: { kind: 'post' | 'note' }) {
         setTags(tagItems)
         setServerUpdatedAt(post?.updatedAt ?? null)
         setBaseUpdatedAt(post?.updatedAt ?? null)
+        if (post) setPostVersion(post.version)
+        if (post?.status === 'trash') { message.error('请先从回收站恢复'); navigate(base); return }
         if (post) form.setFieldsValue({
-          kind: post.kind,
+          kind: post.kind, version: post.version,
           title: post.title, slug: post.slug, excerpt: post.excerpt, contentMd: post.contentMd ?? '',
           coverUrl: post.coverUrl, status: post.status, pinned: post.pinned, categoryId: post.categoryId,
           tagIds: post.tags.map((tag) => tag.id),
@@ -65,8 +71,10 @@ export default function PostEditor({ kind }: { kind: 'post' | 'note' }) {
     if (uploadingImage) { message.warning('请等图片上传完成后再保存'); return }
     setSaving(true)
     try {
-      await savePost({ ...input, kind, categoryId: input.categoryId || null, tagIds: input.tagIds ?? [] }, postId)
+      await cloud.flush()
+      await savePost({ ...input, version: input.version ?? postVersion, kind, categoryId: input.categoryId || null, tagIds: input.tagIds ?? [] }, postId)
       message.success(input.status === 'published' ? `${label}已发布` : '草稿已保存')
+      try { await cloud.clear() } catch { message.warning('内容已保存，但云端草稿清理失败，下次打开请检查') }
       backup.clear()
       markSaved()
       if (blocker.state === 'blocked') blocker.reset()
@@ -89,15 +97,25 @@ export default function PostEditor({ kind }: { kind: 'post' | 'note' }) {
   function queueDraft() {
     setDirty(true)
     const value = form.getFieldsValue(true) as PostInput
-    backup.queue({ ...value, categoryId: value.categoryId ?? null, tagIds: value.tagIds ?? [] })
+    const snapshot = { ...value, version: value.version ?? postVersion, kind, categoryId: value.categoryId ?? null, tagIds: value.tagIds ?? [] }
+    backup.queue(snapshot)
+    if (!uploadingImage) cloud.queue(snapshot)
   }
+
+  function applyDraft(input: Partial<PostInput>) { form.setFieldsValue(input); queueDraft() }
 
   return (
     <section className="admin-page admin-editor">
       <div className="admin-page-heading"><div><Typography.Title level={2}>{postId ? `编辑${label}` : `写${label}`}</Typography.Title><Typography.Text type="secondary">使用富文本编辑正文，支持 Markdown 源码与前台预览</Typography.Text></div><Button onClick={() => navigate(base)}>返回列表</Button></div>
+      <Space direction="vertical" style={{ width: '100%', marginBottom: 16 }}>
+        <WritingTools disabled={saving || loading || uploadingImage || Boolean(cloud.recovery)} id={postId} value={() => form.getFieldsValue(true) as PostInput} apply={applyDraft} />
+        <Typography.Text type="secondary">{cloud.status} · 自动保存不会发布内容</Typography.Text>
+        {cloud.error && <Alert type="error" showIcon message={cloud.error} />}
+        {cloud.recovery && <Alert type="info" message="发现云端草稿" description={`备份于 ${new Date(cloud.recovery.updatedAt).toLocaleString('zh-CN')}，恢复只替换编辑框；旧版本草稿请与服务器内容核对。`} action={<Space><Button onClick={() => { if (cloud.recovery) { const draft = cloud.recovery.snapshot; cloud.accept(); applyDraft(draft) } }}>恢复云端草稿</Button><Button onClick={() => { void cloud.discard().catch(error => message.error(error.message)) }}>丢弃</Button></Space>} />}
+      </Space>
       <Card loading={loading}>
         {backup.error && <Alert message={backup.error} showIcon type="warning" />}
-        <Form<PostInput> form={form} initialValues={{ ...emptyPost, kind }} layout="vertical" onFinish={(input) => void submit(input)} onValuesChange={queueDraft}>
+        <Form<PostInput> disabled={saving || Boolean(cloud.recovery) || Boolean(postId && postVersion === undefined)} form={form} initialValues={{ ...emptyPost, kind }} layout="vertical" onFinish={(input) => void submit(input)} onValuesChange={queueDraft}>
           <Form.Item label="标题" name="title" rules={[{ required: true, message: `请输入${label}标题` }, { max: 240 }]}><Input maxLength={240} placeholder={`${label}标题`} size="large" /></Form.Item>
           <Form.Item extra="网址中使用的简短名称，可用中英文、数字和连字符" label={`${label}链接`} name="slug" rules={[{ required: true, message: `请输入${label}链接` }, { pattern: /^[\p{L}\p{N}]+(?:-[\p{L}\p{N}]+)*$/u, message: '只能使用文字、数字和连字符' }]}><Input maxLength={160} placeholder="例如 my-first-post" /></Form.Item>
           <Form.Item label="摘要" name="excerpt" rules={[{ max: 500 }]}><Input.TextArea maxLength={500} placeholder={`用于${label}列表和搜索摘要`} rows={3} showCount /></Form.Item>
@@ -117,7 +135,7 @@ export default function PostEditor({ kind }: { kind: 'post' | 'note' }) {
         cancelText="丢弃本地草稿" closable={false} keyboard={false} maskClosable={false}
         okText="恢复本地草稿" open={Boolean(backup.recovery) && !loading} title="发现未保存的本地草稿"
         onCancel={backup.clear}
-        onOk={() => { if (backup.recovery) { form.setFieldsValue(backup.recovery.value); setDirty(true); backup.dismissRecovery() } }}
+        onOk={() => { if (backup.recovery) { form.setFieldsValue(backup.recovery.value); setDirty(true); backup.dismissRecovery(); queueDraft() } }}
       >
         <p>备份时间：{backup.recovery && new Date(backup.recovery.savedAt).toLocaleString('zh-CN')}。恢复后请检查内容并手动保存。</p>
         {serverUpdatedAt && backup.recovery?.baseUpdatedAt !== serverUpdatedAt && <p>服务器上的内容已有更新，恢复本地草稿会覆盖编辑框中的新版内容。</p>}
@@ -125,4 +143,10 @@ export default function PostEditor({ kind }: { kind: 'post' | 'note' }) {
       <UnsavedChangesDialog blocker={blocker} saving={saving || uploadingImage} onDiscard={backup.clear} />
     </section>
   )
+}
+
+// Changing article IDs must also reset draft versions and pending autosave work.
+export default function PostEditor({ kind }: { kind: 'post' | 'note' }) {
+  const { id } = useParams()
+  return <PostEditorForm key={`${kind}-${id ?? 'new'}`} kind={kind} />
 }

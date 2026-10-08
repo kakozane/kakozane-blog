@@ -20,6 +20,7 @@ export const router = createBrowserRouter([
       { path: 'notes', lazy: async () => { const Posts = (await import('../pages/Posts')).default; return { Component: () => <Posts kind="note" /> } } },
       { path: 'notes/new', lazy: async () => { const Editor = (await import('../pages/PostEditor')).default; return { Component: () => <Editor kind="note" /> } } },
       { path: 'notes/:id/edit', lazy: async () => { const Editor = (await import('../pages/PostEditor')).default; return { Component: () => <Editor kind="note" /> } } },
+      { path: 'trash', lazy: async () => ({ Component: (await import('../pages/Trash')).default }) },
       { path: 'thinking', lazy: async () => ({ Component: (await import('../pages/Thoughts')).default }) },
       { path: 'pages', lazy: async () => ({ Component: (await import('../pages/Pages')).default }) },
       { path: 'pages/new', lazy: async () => ({ Component: (await import('../pages/PageEditor')).default }) },

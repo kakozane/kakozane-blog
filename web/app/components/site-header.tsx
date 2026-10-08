@@ -1,3 +1,4 @@
+import { NotificationBadge } from "./notification-inbox";
 import { createPortal } from "react-dom";
 import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, useLocation, useRevalidator, useRouteLoaderData } from "react-router";
@@ -140,7 +141,7 @@ export function SiteHeader() {
           onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) event.currentTarget.open = false; }}
         ><summary aria-current={moreActive ? "page" : undefined}>更多</summary><div className="site-nav-more-panel">{moreItems.map((item, index) => item.to.startsWith("https://") ? <a href={item.to} key={`${item.to}-${index}`} onClick={(event) => event.currentTarget.closest("details")?.removeAttribute("open")} rel="noopener noreferrer" target="_blank">{item.label} ↗</a> : <NavLink key={`${item.to}-${index}`} onClick={(event) => event.currentTarget.closest("details")?.removeAttribute("open")} to={item.to}>{item.label}</NavLink>)}</div></details>
       </nav>
-      <div className="site-actions"><button aria-keyshortcuts="Meta+K Control+K" aria-label="快速搜索" className="site-search-trigger" onClick={() => setSearchOpen(true)} title="快速搜索（⌘K / Ctrl+K）" type="button"><svg aria-hidden="true" fill="none" height="18" stroke="currentColor" strokeLinecap="round" strokeWidth="1.8" viewBox="0 0 24 24" width="18"><circle cx="10.8" cy="10.8" r="6.8" /><path d="m16 16 4.5 4.5" /></svg></button><ThemeSwitch />{user ? <button className="site-login" onClick={signOut} type="button">退出</button> : <Link className="site-login" preventScrollReset to={authPagePath("login", `${location.pathname}${location.search}${location.hash}`)}>登录</Link>}
+      <div className="site-actions"><button aria-keyshortcuts="Meta+K Control+K" aria-label="快速搜索" className="site-search-trigger" onClick={() => setSearchOpen(true)} title="快速搜索（⌘K / Ctrl+K）" type="button"><svg aria-hidden="true" fill="none" height="18" stroke="currentColor" strokeLinecap="round" strokeWidth="1.8" viewBox="0 0 24 24" width="18"><circle cx="10.8" cy="10.8" r="6.8" /><path d="m16 16 4.5 4.5" /></svg></button><ThemeSwitch />{user && <NotificationBadge />}{user ? <button className="site-login" onClick={signOut} type="button">退出</button> : <Link className="site-login" preventScrollReset to={authPagePath("login", `${location.pathname}${location.search}${location.hash}`)}>登录</Link>}
 
       </div>
     </header>

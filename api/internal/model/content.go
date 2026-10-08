@@ -14,6 +14,7 @@ type NoteSeries struct {
 }
 
 type Post struct {
+	Version      int64      `json:"version"`
 	ID           int64      `json:"id"`
 	AuthorID     int64      `json:"authorId"`
 	AuthorName   string     `json:"authorName"`
@@ -35,6 +36,7 @@ type Post struct {
 }
 
 type PostInput struct {
+	Version    *int64  `json:"version,omitempty"`
 	Kind       string  `json:"kind"`
 	Title      string  `json:"title"`
 	Slug       string  `json:"slug"`
