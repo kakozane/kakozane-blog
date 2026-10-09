@@ -1,7 +1,7 @@
 import { publicPreviewOrigin } from './preview-origin'
 
 export type FrontPreview = {
-  kind: 'post' | 'note' | 'page'
+  kind: 'post' | 'note' | 'thought' | 'page'
   title: string
   excerpt: string
   contentMd: string

@@ -153,7 +153,6 @@ func (s *ContentService) SavePost(ctx context.Context, id, authorID int64, input
 	if utf8.RuneCountInString(input.Title) < 1 || utf8.RuneCountInString(input.Title) > 240 || !validSlug(input.Slug) ||
 		utf8.RuneCountInString(input.Excerpt) > 500 || len(input.ContentMD) > 1024*1024 ||
 		(input.Status != "draft" && input.Status != "published") || (input.Kind != "post" && input.Kind != "note" && input.Kind != "thought") || len(input.TagIDs) > 20 || !validCoverURL(input.CoverURL) ||
-		(input.Kind == "thought" && utf8.RuneCountInString(input.ContentMD) > 2000) || (input.Kind == "thought" && input.Pinned) ||
 		(input.Kind == "note" && input.Slug == "series") {
 		return model.Post{}, ErrInvalidInput
 	}

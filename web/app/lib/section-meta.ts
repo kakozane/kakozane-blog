@@ -3,11 +3,11 @@ import type { Site } from "../types/site";
 const sections: Record<string, { title: string; description: string }> = {
   "/posts": { title: "文章", description: "完整的写作与技术实践。" },
   "/archive": { title: "文章归档", description: "按发布时间浏览全部文章。" },
-  "/topics": { title: "话题", description: "按分类和标签浏览已发布的内容。" },
+  "/topics": { title: "分类与标签", description: "按分类和标签浏览已发布的内容。" },
   "/notes": { title: "手记", description: "成篇的随笔与短文章。" },
   "/thinking": { title: "思考", description: "随时记下的想法与片段。" },
   "/says": { title: "一言", description: "值得留存的句子与出处。" },
-  "/timeline": { title: "时间线", description: "按时间回看文章、手记与思考。" },
+  "/timeline": { title: "归档", description: "按时间回看文章。" },
   "/subscribe": { title: "订阅", description: "使用 RSS 阅读器订阅博客更新。" },
   "/about": { title: "关于", description: "" },
   "/friends": { title: "友情链接", description: "常逛的友站与值得收藏的网站。" },

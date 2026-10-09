@@ -8,7 +8,7 @@ import { getTimeline } from "../lib/posts.server";
 import { contentLabel, contentPath } from "../lib/content-path";
 import type { Route } from "./+types/search";
 
-export function meta({ matches }: Route.MetaArgs) { return [{ title: `搜索 · ${matches[0].loaderData.site.title}` }, { name: "description", content: "搜索博客文章、手记、思考和页面。" }, { name: "robots", content: "noindex" }]; }
+export function meta({ matches }: Route.MetaArgs) { return [{ title: `搜索 · ${matches[0].loaderData.site.title}` }, { name: "description", content: "搜索博客文章和页面。" }, { name: "robots", content: "noindex" }]; }
 
 export async function loader({ request }: Route.LoaderArgs) {
   const params = new URL(request.url).searchParams;
@@ -26,8 +26,8 @@ export default function Search() {
     <main className="simple-page search-page">
       <h1>搜索</h1>
       <Form className="post-search" method="get" role="search">
-        <label className="sr-only" htmlFor="site-query">搜索文章、手记、思考和页面</label>
-        <input autoFocus defaultValue={query} id="site-query" maxLength={100} name="q" placeholder="搜索文章、手记、思考和页面" type="search" />
+        <label className="sr-only" htmlFor="site-query">搜索文章和页面</label>
+        <input autoFocus defaultValue={query} id="site-query" maxLength={100} name="q" placeholder="搜索文章和页面" type="search" />
         <button type="submit">搜索</button>
       </Form>
       {query && <p className="search-summary">“{query}”找到 {results.total + pages.length} 条内容</p>}

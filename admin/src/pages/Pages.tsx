@@ -31,7 +31,7 @@ export default function Pages() {
   ]
 
   return <section className="admin-page">
-    <div className="admin-page-heading"><div><Typography.Title level={2}>自定义页面</Typography.Title><Typography.Text type="secondary">发布不属于文章或手记的固定内容</Typography.Text></div><Link to="/pages/new"><Button type="primary">新建页面</Button></Link></div>
+    <div className="admin-page-heading"><div><Typography.Title level={2}>自定义页面</Typography.Title><Typography.Text type="secondary">发布不属于文章的固定内容</Typography.Text></div><Link to="/pages/new"><Button type="primary">新建页面</Button></Link></div>
     <Table columns={columns} dataSource={items} loading={loading} rowKey="id" pagination={false} />
   </section>
 }

@@ -13,7 +13,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 
 export function meta({ loaderData, matches }: Route.MetaArgs) {
   const site = matches[0].loaderData.site;
-  if (!loaderData) return [{ title: `思考不存在 · ${site.title}` }];
+  if (!loaderData) return [{ title: `文章不存在 · ${site.title}` }];
   return articleMeta(loaderData.post, site);
 }
 

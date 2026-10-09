@@ -1,4 +1,4 @@
-import { CommentOutlined, EditOutlined, FileTextOutlined, PictureOutlined, SettingOutlined } from '@ant-design/icons'
+import { CommentOutlined, EditOutlined, PictureOutlined, SettingOutlined } from '@ant-design/icons'
 import { Button, Card, Statistic, Table, Tag, Typography, message } from 'antd'
 import { useEffect, useState } from 'react'
 import { Link, useRouteLoaderData } from 'react-router'
@@ -18,7 +18,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     let active = true
-    Promise.all([listPosts(1, 5, '', '', 'post'), listPosts(1, 1, 'draft', '', 'post'), listUsers(), listComments(1, 'pending')])
+    Promise.all([listPosts(1, 5), listPosts(1, 1, 'draft'), listUsers(), listComments(1, 'pending')])
       .then(([posts, drafts, users, pending]) => {
         if (active) {
           setCounts({ posts: posts.total, drafts: drafts.total, users: users.total, pending: pending.total })
@@ -49,7 +49,6 @@ export default function Dashboard() {
         <Card title="快捷入口">
           <div className="dashboard-quick-links">
             <Link to="/posts/new"><EditOutlined />写文章</Link>
-            <Link to="/notes/new"><FileTextOutlined />写手记</Link>
             <Link to="/comments"><CommentOutlined />审核评论</Link>
             <Link to="/media"><PictureOutlined />媒体库</Link>
             <Link to="/settings"><SettingOutlined />站点设置</Link>

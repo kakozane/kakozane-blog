@@ -296,7 +296,7 @@ export default function Post() {
         <div className="post-meta">
           <time dateTime={post.publishedAt ?? post.createdAt}>{formatDate(post.publishedAt ?? post.createdAt, true)}</time>
           <span>·</span><span>{post.authorName}</span>
-          {post.categoryName && <><span>·</span><Link to={post.kind === "note" ? `/notes/series/${encodeURIComponent(post.categorySlug)}` : `/categories/${encodeURIComponent(post.categorySlug)}`}>{post.categoryName}</Link></>}
+          {post.categoryName && <><span>·</span><Link to={`/categories/${encodeURIComponent(post.categorySlug)}`}>{post.categoryName}</Link></>}
           {post.kind === "note" && post.pinned && <><span aria-hidden="true">·</span><span className="post-pinned">精选</span></>}
           {post.kind !== "thought" && <><span aria-hidden="true">·</span><span>{stats.characters.toLocaleString("zh-CN")} 字 · 阅读约 {stats.minutes} 分钟</span></>}
           {wasRevised(post.publishedAt, post.updatedAt) && <><span aria-hidden="true">·</span><span>更新于 <time dateTime={post.updatedAt}>{formatDateTime(post.updatedAt)}</time></span></>}

@@ -1,5 +1,7 @@
 import { createBrowserRouter, redirect } from 'react-router'
 
+import { getPost } from '../api/content'
+
 import { currentUser, logout } from '../api/auth'
 import LogoutError from '../pages/LogoutError'
 
@@ -14,14 +16,14 @@ export const router = createBrowserRouter([
     lazy: async () => ({ Component: (await import('../layout/AdminLayout')).default }),
     children: [
       { index: true, lazy: async () => ({ Component: (await import('../pages/Dashboard')).default }) },
-      { path: 'posts', lazy: async () => { const Posts = (await import('../pages/Posts')).default; return { Component: () => <Posts kind="post" /> } } },
-      { path: 'posts/new', lazy: async () => { const Editor = (await import('../pages/PostEditor')).default; return { Component: () => <Editor kind="post" /> } } },
-      { path: 'posts/:id/edit', lazy: async () => { const Editor = (await import('../pages/PostEditor')).default; return { Component: () => <Editor kind="post" /> } } },
-      { path: 'notes', lazy: async () => { const Posts = (await import('../pages/Posts')).default; return { Component: () => <Posts kind="note" /> } } },
-      { path: 'notes/new', lazy: async () => { const Editor = (await import('../pages/PostEditor')).default; return { Component: () => <Editor kind="note" /> } } },
-      { path: 'notes/:id/edit', lazy: async () => { const Editor = (await import('../pages/PostEditor')).default; return { Component: () => <Editor kind="note" /> } } },
+      { path: 'posts', lazy: async () => { const Posts = (await import('../pages/Posts')).default; return { Component: () => <Posts /> } } },
+      { path: 'posts/new', loader: () => null, lazy: async () => { const Editor = (await import('../pages/PostEditor')).default; return { Component: () => <Editor /> } } },
+      { path: 'posts/:id/edit', loader: ({ params }) => getPost(Number(params.id)), lazy: async () => { const Editor = (await import('../pages/PostEditor')).default; return { Component: () => <Editor /> } } },
+      { path: 'notes', loader: () => redirect('/posts') },
+      { path: 'notes/new', loader: () => null, lazy: async () => { const Editor = (await import('../pages/PostEditor')).default; return { Component: () => <Editor kind="note" /> } } },
+      { path: 'notes/:id/edit', loader: ({ params }) => redirect(`/posts/${params.id}/edit`) },
       { path: 'trash', lazy: async () => ({ Component: (await import('../pages/Trash')).default }) },
-      { path: 'thinking', lazy: async () => ({ Component: (await import('../pages/Thoughts')).default }) },
+      { path: 'thinking', loader: () => redirect('/posts') },
       { path: 'pages', lazy: async () => ({ Component: (await import('../pages/Pages')).default }) },
       { path: 'pages/new', lazy: async () => ({ Component: (await import('../pages/PageEditor')).default }) },
       { path: 'pages/:id/edit', lazy: async () => ({ Component: (await import('../pages/PageEditor')).default }) },

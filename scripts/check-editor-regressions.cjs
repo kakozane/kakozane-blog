@@ -4,7 +4,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE_PATH || 'playwright')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
-const origin = process.env.ADMIN_ORIGIN || 'https://admin.dev.kakozane.icu'
+const origin = process.env.ADMIN_ORIGIN || 'https://admin.dev.retniw.cc'
 const credentials = Object.fromEntries(fs.readFileSync(
   process.env.ADMIN_CREDENTIALS_FILE || path.resolve(__dirname, '../api/bootstrap-admin.txt'), 'utf8',
 ).trim().split('\n').map(line => {

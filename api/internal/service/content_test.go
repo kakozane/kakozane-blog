@@ -2,12 +2,14 @@ package service
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/kakozane/kakozane-blog/api/internal/model"
+	"github.com/kakozane/kakozane-blog/api/internal/repository"
 )
 
 func TestRejectInvalidContentKind(t *testing.T) {
@@ -25,23 +27,29 @@ func TestRejectInvalidContentKind(t *testing.T) {
 	}
 }
 
-func TestRejectLongThought(t *testing.T) {
-	service := NewContentService(nil, nil)
-	_, err := service.SavePost(context.Background(), 0, 1, model.PostInput{
-		Kind: "thought", Title: "Thought", Slug: "thought", Status: "published", ContentMD: strings.Repeat("a", 2001),
-	})
-	if !errors.Is(err, ErrInvalidInput) {
-		t.Fatalf("long thought: got %v", err)
+func TestHistoricalThoughtUsesArticleLimits(t *testing.T) {
+	db, err := sql.Open("mysql", "")
+	if err != nil {
+		t.Fatal(err)
 	}
-}
-
-func TestRejectPinnedThought(t *testing.T) {
-	service := NewContentService(nil, nil)
-	_, err := service.SavePost(context.Background(), 0, 1, model.PostInput{
-		Kind: "thought", Title: "Thought", Slug: "thought", Status: "draft", Pinned: true,
+	defer db.Close()
+	svc := NewContentService(repository.NewContentRepository(db), nil)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	// 取消上下文使数据库操作立即退出，确认合法历史内容已通过校验而无需连接数据库。
+	_, err = svc.SavePost(ctx, 0, 1, model.PostInput{
+		Kind: "thought", Title: "Thought", Slug: "thought", Status: "draft", ContentMD: strings.Repeat("a", 2001), Pinned: true,
 	})
-	if !errors.Is(err, ErrInvalidInput) {
-		t.Fatalf("pinned thought: got %v", err)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("historical article validation: %v", err)
+	}
+	for _, kind := range []string{"post", "note", "thought"} {
+		_, err = svc.SavePost(ctx, 0, 1, model.PostInput{
+			Kind: kind, Title: "Article", Slug: "article", Status: "draft", ContentMD: strings.Repeat("a", 1024*1024+1),
+		})
+		if !errors.Is(err, ErrInvalidInput) {
+			t.Fatalf("oversized %s: %v", kind, err)
+		}
 	}
 }
 

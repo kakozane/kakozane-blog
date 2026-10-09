@@ -14,8 +14,8 @@ import urllib.error
 import urllib.request
 
 ROOT = Path(__file__).resolve().parents[1]
-FRONT = "https://dev.kakozane.icu"
-ADMIN = "https://admin.dev.kakozane.icu"
+FRONT = "https://dev.retniw.cc"
+ADMIN = "https://admin.dev.retniw.cc"
 FP = "/api/v1/auth"
 AP = "/api/v1/admin/auth"
 TLS = ssl.create_default_context(cafile=str(ROOT / "local-ca.crt"))
@@ -84,7 +84,7 @@ def main():
         assert headers["Access-Control-Allow-Origin"] == ADMIN and headers["Access-Control-Allow-Credentials"] == "true"
         _, headers = request(browser, FRONT, FP + "/sso/ticket", "OPTIONS", source=ADMIN, expected=204)
         assert headers["Access-Control-Allow-Origin"] == ADMIN
-        _, headers = request(browser, FRONT, FP + "/sso/status", source="https://evil.dev.kakozane.icu", expected=403)
+        _, headers = request(browser, FRONT, FP + "/sso/status", source="https://evil.dev.retniw.cc", expected=403)
         assert "Access-Control-Allow-Origin" not in headers
         request(browser, FRONT, FP + "/sso/ticket", "POST", {"userId": fixtures["reader"][0]}, ADMIN, expected=409)
         code = ticket(browser, FRONT, FP, ADMIN)

@@ -1,7 +1,7 @@
 // 本地集成检查：创建临时文章、读者和评论，finally 清理。不要指向生产环境。
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE_PATH || 'playwright')
 const fs = require('node:fs'), path = require('node:path'), assert = require('node:assert/strict'), crypto = require('node:crypto')
-const A = process.env.ADMIN_ORIGIN || 'https://admin.dev.kakozane.icu', F = process.env.FRONT_ORIGIN || 'https://dev.kakozane.icu'
+const A = process.env.ADMIN_ORIGIN || 'https://admin.dev.retniw.cc', F = process.env.FRONT_ORIGIN || 'https://dev.retniw.cc'
 const credentials = Object.fromEntries(fs.readFileSync(process.env.ADMIN_CREDENTIALS_FILE || path.resolve(__dirname,'../api/bootstrap-admin.txt'),'utf8').trim().split('\n').map(line => {const i=line.indexOf(': ');return [line.slice(0,i),line.slice(i+2)]}))
 async function main() {
  const browser=await chromium.launch({channel:'chrome',headless:true,args:['--no-proxy-server']})

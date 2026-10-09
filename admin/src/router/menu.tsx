@@ -5,11 +5,8 @@ export const adminMenu: MenuDataItem[] = [
   { path: '/', name: '工作台', icon: <DashboardOutlined /> },
   { key: 'content', name: '内容管理', icon: <FileTextOutlined />, children: [
     { path: '/posts', name: '文章管理' },
-    { path: '/notes', name: '手记管理' },
-    { path: '/thinking', name: '思考管理' },
     { path: '/pages', name: '自定义页面' },
     { path: '/trash', name: '回收站' },
-    { path: '/says', name: '一言管理' },
     { path: '/categories', name: '分类管理' },
     { path: '/tags', name: '标签管理' },
   ] },

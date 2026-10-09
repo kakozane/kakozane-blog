@@ -7,9 +7,9 @@ import { restorePost, purgePost } from '../api/writing'
 import { deletePost, listPosts } from '../api/content'
 import type { Post } from '../types/content'
 
-export default function Posts({ kind }: { kind: 'post' | 'note' }) {
-  const label = kind === 'note' ? '手记' : '文章'
-  const base = kind === 'note' ? '/notes' : '/posts'
+export default function Posts() {
+  const label = '文章'
+  const base = '/posts'
   const [items, setItems] = useState<Post[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
@@ -20,7 +20,7 @@ export default function Posts({ kind }: { kind: 'post' | 'note' }) {
   const refresh = useCallback(async () => {
     setLoading(true)
     try {
-      const data = await listPosts(page, 10, status, query, kind)
+      const data = await listPosts(page, 10, status, query)
       setItems(data.items)
       setTotal(data.total)
     } catch (cause) {
@@ -28,7 +28,7 @@ export default function Posts({ kind }: { kind: 'post' | 'note' }) {
     } finally {
       setLoading(false)
     }
-  }, [page, status, query, kind, label])
+  }, [page, status, query, label])
 
   useEffect(() => { void refresh() }, [refresh])
 
@@ -43,7 +43,7 @@ export default function Posts({ kind }: { kind: 'post' | 'note' }) {
   }
 
   const columns: ColumnsType<Post> = [
-    { title: '标题', dataIndex: 'title', render: (_, item) => <>{item.pinned && <Tag color="blue">{kind === 'post' ? '置顶' : '精选'}</Tag>}<Link to={`${base}/${item.id}/edit`}>{item.title}</Link></> },
+    { title: '标题', dataIndex: 'title', render: (_, item) => <>{item.pinned && <Tag color="blue">置顶</Tag>}<Link to={`${base}/${item.id}/edit`}>{item.title}</Link></> },
     { title: '状态', dataIndex: 'status', width: 110, render: (value: Post['status']) => <Tag color={value === 'published' ? 'green' : 'default'}>{value === 'trash' ? '回收站' : value === 'published' ? '已发布' : '草稿'}</Tag> },
     { title: '分类', dataIndex: 'categoryName', width: 130, render: (value: string) => value || '—' },
     { title: '更新于', dataIndex: 'updatedAt', width: 180, render: (value: string) => new Date(value).toLocaleString('zh-CN') },

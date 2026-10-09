@@ -53,7 +53,7 @@ export default function Posts() {
         {sort !== "newest" && <input name="sort" type="hidden" value={sort} />}
         <button type="submit">搜索</button>
       </Form>
-      <div className="posts-sidebar-section"><h2>话题</h2>{tags.length ? <div className="posts-tag-links">{tags.slice(0, 12).map((tag) => <Link key={tag.id} to={`/tags/${encodeURIComponent(tag.slug)}`}>{tag.name}</Link>)}</div> : <p>话题会随着写作慢慢积累。</p>}<Link className="posts-all-topics" to="/topics">全部话题 ↗</Link></div>
+      <div className="posts-sidebar-section"><h2>标签</h2>{tags.length ? <div className="posts-tag-links">{tags.slice(0, 12).map((tag) => <Link key={tag.id} to={`/tags/${encodeURIComponent(tag.slug)}`}>{tag.name}</Link>)}</div> : <p>标签会随着写作慢慢积累。</p>}<Link className="posts-all-topics" to="/topics">分类与标签 ↗</Link></div>
       <nav aria-label="浏览文章" className="posts-sidebar-links"><Link to="/archive">时间归档 ↗</Link><Link to="/subscribe">订阅更新 ↗</Link></nav>
       </aside>
       <section aria-label="文章列表" className="posts-results">

@@ -1,5 +1,5 @@
 import type { CommentList, LikeState, MonthCount, NoteSeries, Post, PostConnections, PostList, PublicationStats, RecentComment, RecentLike, Term, TimelineYears } from "../types/content";
-import { contentPath } from "./content-path";
+import { contentPath } from "./content-path.ts";
 
 const api = process.env.API_INTERNAL_URL ?? "http://localhost:6324";
 
@@ -19,7 +19,7 @@ export function getPosts(params: URLSearchParams, pinnedFirst = false): Promise<
   const sort = params.get("sort");
   if (!pinnedFirst && sort) query.set("sort", sort);
   if (pinnedFirst) query.set("pinFirst", "1");
-  return get<PostList>(`/posts?${query}`);
+  return get<PostList>(`/timeline?${query}`);
 }
 
 export function getPublicationStats(): Promise<PublicationStats> {

@@ -58,8 +58,8 @@ export function SearchDialog({ open, onClose }: { open: boolean; onClose: () => 
     <div className="quick-search-panel">
       <div className="quick-search-heading"><h2 id="quick-search-title">搜索博客</h2><button aria-label="关闭搜索" onClick={() => dialogRef.current?.close()} type="button">×</button></div>
       <Form action="/search" className="quick-search-form" method="get" onSubmit={onClose} role="search">
-        <label className="sr-only" htmlFor="quick-search-input">搜索文章、手记、思考和页面</label>
-        <input autoComplete="off" id="quick-search-input" maxLength={100} name="q" onChange={(event) => setQuery(event.target.value)} placeholder="搜索文章、手记、思考和页面" ref={inputRef} type="search" value={query} />
+        <label className="sr-only" htmlFor="quick-search-input">搜索文章和页面</label>
+        <input autoComplete="off" id="quick-search-input" maxLength={100} name="q" onChange={(event) => setQuery(event.target.value)} placeholder="搜索文章和页面" ref={inputRef} type="search" value={query} />
         <button type="submit">搜索</button>
       </Form>
       <div aria-live="polite" className="quick-search-results">

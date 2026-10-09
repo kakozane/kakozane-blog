@@ -18,17 +18,13 @@ import type { Post } from "../types/content";
 const primaryNavItems = [
   { to: "/", label: "首页" },
   { to: "/posts", label: "文章" },
-  { to: "/notes", label: "手记" },
-  { to: "/thinking", label: "思考" },
-  { to: "/timeline", label: "时间线" },
+  { to: "/archive", label: "归档" },
+  { to: "/about", label: "关于" },
 ];
 
 const secondaryNavItems = [
-  { to: "/says", label: "一言" },
-  { to: "/topics", label: "话题" },
   { to: "/pages", label: "页面" },
   { to: "/subscribe", label: "订阅" },
-  { to: "/about", label: "关于" },
   { to: "/friends", label: "友链" },
   { to: "/projects", label: "项目" },
 ];

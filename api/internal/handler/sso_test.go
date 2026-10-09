@@ -12,18 +12,18 @@ import (
 
 func TestSSOOriginBoundary(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	h := NewAuthHandler(nil, []config.SSOSite{{FrontOrigin: "https://dev.kakozane.icu", AdminOrigin: "https://admin.dev.kakozane.icu"}})
+	h := NewAuthHandler(nil, []config.SSOSite{{FrontOrigin: "https://dev.retniw.cc", AdminOrigin: "https://admin.dev.retniw.cc"}})
 	for _, test := range []struct {
 		name, host, origin, scope, proto string
 		allowed                          bool
 	}{
-		{"front to admin", "admin.dev.kakozane.icu", "https://dev.kakozane.icu", service.ScopeAdmin, "https", true},
-		{"admin to front", "dev.kakozane.icu", "https://admin.dev.kakozane.icu", service.ScopeFront, "https", true},
-		{"untrusted sibling", "dev.kakozane.icu", "https://evil.dev.kakozane.icu", service.ScopeFront, "https", false},
-		{"production isolation", "dev.kakozane.icu", "https://admin.kakozane.icu", service.ScopeFront, "https", false},
-		{"missing origin", "dev.kakozane.icu", "", service.ScopeFront, "https", false},
-		{"wrong scope on host", "dev.kakozane.icu", "https://admin.dev.kakozane.icu", service.ScopeAdmin, "https", false},
-		{"http", "dev.kakozane.icu", "https://admin.dev.kakozane.icu", service.ScopeFront, "http", false},
+		{"front to admin", "admin.dev.retniw.cc", "https://dev.retniw.cc", service.ScopeAdmin, "https", true},
+		{"admin to front", "dev.retniw.cc", "https://admin.dev.retniw.cc", service.ScopeFront, "https", true},
+		{"untrusted sibling", "dev.retniw.cc", "https://evil.dev.retniw.cc", service.ScopeFront, "https", false},
+		{"production isolation", "dev.retniw.cc", "https://admin.kakozane.icu", service.ScopeFront, "https", false},
+		{"missing origin", "dev.retniw.cc", "", service.ScopeFront, "https", false},
+		{"wrong scope on host", "dev.retniw.cc", "https://admin.dev.retniw.cc", service.ScopeAdmin, "https", false},
+		{"http", "dev.retniw.cc", "https://admin.dev.retniw.cc", service.ScopeFront, "http", false},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			w := httptest.NewRecorder()

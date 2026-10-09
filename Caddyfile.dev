@@ -3,7 +3,7 @@
 # localhost 使用下列显式端口；开发域名未写端口，HTTPS 默认使用 443。
 # 开发域名需先通过本机 hosts 指向本机，相关端口由 compose.dev.yaml 映射。
 # api、web、admin 是 Compose 服务名，并不是公网域名。
-localhost:6324, api.dev.kakozane.icu {
+localhost:6324, api.dev.retniw.cc {
 	# 使用 Caddy 自建的本地 CA 签发 HTTPS 证书，不是公网可信证书。
 	# 浏览器需要信任该 CA 的根证书；证书状态由 Compose 的 /data 卷保存。
 	tls internal
@@ -11,7 +11,7 @@ localhost:6324, api.dev.kakozane.icu {
 	reverse_proxy api:6324
 }
 
-localhost:6325, dev.kakozane.icu {
+localhost:6325, dev.retniw.cc {
 	# 使用 Caddy 自建的本地 CA 签发 HTTPS 证书，不是公网可信证书。
 	# 浏览器需要信任该 CA 的根证书；证书状态由 Compose 的 /data 卷保存。
 	tls internal
@@ -46,7 +46,7 @@ localhost:6325, dev.kakozane.icu {
 	}
 }
 
-localhost:6326, admin.dev.kakozane.icu {
+localhost:6326, admin.dev.retniw.cc {
 	# 使用 Caddy 自建的本地 CA 签发 HTTPS 证书，不是公网可信证书。
 	# 浏览器需要信任该 CA 的根证书；证书状态由 Compose 的 /data 卷保存。
 	tls internal

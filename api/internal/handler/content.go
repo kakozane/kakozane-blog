@@ -144,7 +144,7 @@ func (h *ContentHandler) listPosts(c *gin.Context, publishedOnly bool, kind stri
 		return
 	}
 	filter := model.PostFilter{
-		PublishedOnly: publishedOnly, PinnedFirst: publishedOnly && kind == "post" && c.Query("pinFirst") == "1",
+		PublishedOnly: publishedOnly, PinnedFirst: publishedOnly && (kind == "post" || kind == "all") && c.Query("pinFirst") == "1",
 		FeaturedOnly: publishedOnly && c.Query("featured") == "1",
 		Kind:         kind, Status: c.Query("status"), Query: c.Query("q"),
 		CategorySlug: c.Query("category"), TagSlug: c.Query("tag"), Year: year, Month: c.Query("month"), Sort: c.Query("sort"), Page: page, PageSize: pageSize,

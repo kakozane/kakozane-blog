@@ -9,6 +9,7 @@ test("preview accepts bounded content from the matching admin origin", () => {
   const post = { kind: "post", title: "预览", excerpt: "", contentMd: "# 正文", coverUrl: "" };
   assert.deepEqual(parsePreviewMessage({ type: "kakozane-preview", post }), post);
   assert.deepEqual(parsePreviewMessage({ type: "kakozane-preview", post: { ...post, kind: "page" } }), { ...post, kind: "page" });
+  assert.deepEqual(parsePreviewMessage({ type: "kakozane-preview", post: { ...post, kind: "thought" } }), { ...post, kind: "thought" });
   assert.equal(parsePreviewMessage({ type: "kakozane-preview", post: { ...post, coverUrl: "javascript:alert(1)" } }), null);
   assert.equal(parsePreviewMessage({ type: "wrong", post }), null);
   assert.equal(parsePreviewMessage({ type: "kakozane-preview", post: { ...post, contentMd: "x".repeat((2 << 20) + 1) } }), null);

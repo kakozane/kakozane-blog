@@ -32,7 +32,7 @@ export default function Preview() {
     <main className="article-page">
       <p className="preview-notice" role="status">前台预览 · 当前表单内容仅在此窗口显示</p>
       {post ? <>
-        <div className="post-meta"><span>{post.kind === "note" ? "手记" : post.kind === "page" ? "页面" : "文章"}</span></div>
+        <div className="post-meta"><span>{post.kind === "page" ? "页面" : "文章"}</span></div>
         <h1>{post.title}</h1>
         {post.excerpt && <p className="article-lead">{post.excerpt}</p>}
         {post.coverUrl && <img alt="" className="article-cover" src={post.coverUrl} />}

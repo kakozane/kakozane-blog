@@ -1,3 +1,4 @@
+import { contentPath } from "../lib/content-path";
 import { Link } from "react-router";
 
 import { formatDate } from "../lib/date";
@@ -21,10 +22,10 @@ export function PostList({ posts, view = "preview" }: { posts: Post[]; view?: Po
                 {post.pinned && <><span aria-hidden="true">·</span><span className="post-pinned">置顶</span></>}
                 {post.categoryName && <><span aria-hidden="true">·</span><Link to={`/categories/${encodeURIComponent(post.categorySlug)}`}>{post.categoryName}</Link></>}
               </div>
-              <h3><Link to={`/posts/${encodeURIComponent(post.slug)}`}>{post.title}</Link></h3>
+              <h3><Link to={contentPath(post.kind, post.slug)}>{post.title}</Link></h3>
               {view === "preview" && post.excerpt && <p>{post.excerpt}</p>}
             </div>
-            {view === "preview" && post.coverUrl && <Link aria-label={`阅读 ${post.title}`} className="post-thumb" to={`/posts/${encodeURIComponent(post.slug)}`}><img alt="" loading="lazy" src={post.coverUrl} /></Link>}
+            {view === "preview" && post.coverUrl && <Link aria-label={`阅读 ${post.title}`} className="post-thumb" to={contentPath(post.kind, post.slug)}><img alt="" loading="lazy" src={post.coverUrl} /></Link>}
           </div>
         </article>
       ))}

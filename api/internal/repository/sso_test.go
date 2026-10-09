@@ -28,7 +28,7 @@ func TestSSOTicketLifecycle(t *testing.T) {
 	}
 	token := hex.EncodeToString(random)
 	ticket := token + "-ticket"
-	const origin = "https://admin.dev.kakozane.icu"
+	const origin = "https://admin.dev.retniw.cc"
 	key := ssoTicketKey(ticket, "admin", origin)
 	t.Cleanup(func() { client.Del(ctx, key, sessionKey("front", token)) })
 	user := User{ID: 123, SessionVersion: 4}

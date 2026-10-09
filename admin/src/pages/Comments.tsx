@@ -53,7 +53,7 @@ export default function Comments() {
   const columns: ColumnsType<Comment> = [
     { title: '评论内容', dataIndex: 'body', render: (value: string) => <Typography.Paragraph ellipsis={{ rows: 3 }} style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{value}</Typography.Paragraph> },
     { title: '作者', dataIndex: 'authorName', width: 120 },
-    { title: '内容', dataIndex: 'postTitle', width: 180, render: (value: string, item) => <Link to={item.postKind === 'note' ? `/notes/${item.postId}/edit` : item.postKind === 'thought' ? '/thinking' : `/posts/${item.postId}/edit`}>{value}</Link> },
+    { title: '内容', dataIndex: 'postTitle', width: 180, render: (value: string, item) => <Link to={`/posts/${item.postId}/edit`}>{value}</Link> },
     { title: '状态', dataIndex: 'status', width: 130, render: (value: Comment['status'], item) => <Space size={4}><Tag color={value === 'approved' ? 'green' : value === 'pending' ? 'orange' : 'default'}>{statusNames[value]}</Tag>{item.pinned && <Tag color="blue">置顶</Tag>}</Space> },
     { title: '时间', dataIndex: 'createdAt', width: 175, render: (value: string) => new Date(value).toLocaleString('zh-CN') },
     { title: '操作', width: 240, render: (_, item) => <Space wrap>{item.status !== 'approved' && <Button onClick={() => void moderate(item.id, 'approved')} size="small" type="link">通过</Button>}{item.status === 'approved' && (item.parentId === null || item.pinned) && <Button onClick={() => void togglePin(item)} size="small" type="link">{item.pinned ? '取消置顶' : '置顶'}</Button>}{item.status !== 'rejected' && <Button onClick={() => void moderate(item.id, 'rejected')} size="small" type="link">拒绝</Button>}<Popconfirm title="删除这条评论？" onConfirm={() => void remove(item.id)}><Button danger size="small" type="link">删除</Button></Popconfirm></Space> },

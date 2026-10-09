@@ -33,13 +33,13 @@ func TestSSOOrigins(t *testing.T) {
 		front, admin string
 		valid        bool
 	}{
-		{"https://dev.kakozane.icu", "https://admin.dev.kakozane.icu", true},
+		{"https://dev.retniw.cc", "https://admin.dev.retniw.cc", true},
 		{"https://localhost:6325", "https://localhost:6326", true},
-		{"http://dev.kakozane.icu", "https://admin.dev.kakozane.icu", false},
-		{"https://dev.kakozane.icu/", "https://admin.dev.kakozane.icu", false},
-		{"https://dev.kakozane.icu", "https://dev.kakozane.icu", false},
-		{"https://dev.kakozane.icu?redirect=evil", "https://admin.dev.kakozane.icu", false},
-		{"https://user:password@dev.kakozane.icu", "https://admin.dev.kakozane.icu", false},
+		{"http://dev.retniw.cc", "https://admin.dev.retniw.cc", false},
+		{"https://dev.retniw.cc/", "https://admin.dev.retniw.cc", false},
+		{"https://dev.retniw.cc", "https://dev.retniw.cc", false},
+		{"https://dev.retniw.cc?redirect=evil", "https://admin.dev.retniw.cc", false},
+		{"https://user:password@dev.retniw.cc", "https://admin.dev.retniw.cc", false},
 	} {
 		path := filepath.Join(t.TempDir(), "config.yaml")
 		data := base + "auth:\n  sso_sites:\n    - front_origin: " + test.front + "\n      admin_origin: " + test.admin + "\n"

@@ -1,9 +1,9 @@
 import { Alert, Button, Card, Form, Input, Modal, Select, Space, Switch, Typography, message } from 'antd'
 import { useEffect, useState } from 'react'
-import { Link, useNavigate, useParams, useRouteLoaderData } from 'react-router'
+import { Link, useNavigate, useLoaderData, useParams, useRouteLoaderData } from 'react-router'
 import { useCloudDraft } from '../hooks/useCloudDraft'
 import WritingTools from '../components/WritingTools'
-import { getPost, listTerms, savePost } from '../api/content'
+import { listTerms, savePost } from '../api/content'
 import UnsavedChangesDialog from '../components/UnsavedChangesDialog'
 import RichTextEditor from '../components/RichTextEditor'
 import MarkdownPreview from '../components/MarkdownPreview'
@@ -11,13 +11,13 @@ import { openFrontPreview } from '../lib/front-preview'
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges'
 import { useDraftBackup } from '../hooks/useDraftBackup'
 import type { AdminUser } from '../types/auth'
-import type { PostInput, Term } from '../types/content'
+import type { Post, PostInput, Term } from '../types/content'
 
 const emptyPost: PostInput = { kind: 'post', title: '', slug: '', excerpt: '', contentMd: '', coverUrl: '', status: 'draft', pinned: false, categoryId: null, tagIds: [] }
 
-function PostEditorForm({ kind }: { kind: 'post' | 'note' }) {
-  const label = kind === 'note' ? '手记' : '文章'
-  const base = kind === 'note' ? '/notes' : '/posts'
+function PostEditorForm({ kind, post }: { kind: Post['kind']; post?: Post }) {
+  const label = '文章'
+  const base = '/posts'
   const { id } = useParams()
   const postId = id ? Number(id) : undefined
   const admin = useRouteLoaderData('admin') as AdminUser
@@ -31,7 +31,8 @@ function PostEditorForm({ kind }: { kind: 'post' | 'note' }) {
   const [uploadingImage, setUploadingImage] = useState(false)
   const [dirty, setDirty] = useState(false)
   const [postVersion, setPostVersion] = useState<number | undefined>(undefined)
-  const cloud = useCloudDraft(`${kind}-${postId ?? 'new'}`)
+  const draftKind = kind === 'note' ? 'note' : 'post'
+  const cloud = useCloudDraft(`${draftKind}-${postId ?? 'new'}`)
   const [serverUpdatedAt, setServerUpdatedAt] = useState<string | null>(null)
   const backup = useDraftBackup<PostInput>(`kakozane:admin-draft:v1:${admin.id}:${kind}:${postId ?? 'new'}`)
   const setBaseUpdatedAt = backup.setBaseUpdatedAt
@@ -41,8 +42,8 @@ function PostEditorForm({ kind }: { kind: 'post' | 'note' }) {
     let active = true
     async function load() {
       try {
-        const [categoryItems, tagItems, post] = await Promise.all([
-          listTerms('categories'), listTerms('tags'), postId ? getPost(postId) : Promise.resolve(null),
+        const [categoryItems, tagItems] = await Promise.all([
+          listTerms('categories'), listTerms('tags'),
         ])
         if (!active) return
         setCategories(categoryItems)
@@ -65,7 +66,7 @@ function PostEditorForm({ kind }: { kind: 'post' | 'note' }) {
     }
     void load()
     return () => { active = false }
-  }, [form, postId, label, setBaseUpdatedAt])
+  }, [form, postId, post, label, setBaseUpdatedAt])
 
   async function submit(input: PostInput) {
     if (uploadingImage) { message.warning('请等图片上传完成后再保存'); return }
@@ -123,10 +124,10 @@ function PostEditorForm({ kind }: { kind: 'post' | 'note' }) {
           <Card className="markdown-preview" size="small" title="正文预览"><MarkdownPreview value={preview} /></Card>
           <Form.Item extra={<span>可在 <Link to="/media">媒体库</Link> 上传后复制图片地址</span>} label="封面图片地址" name="coverUrl" rules={[{ pattern: /^(https:\/\/\S+|\/(?!\/)\S+)?$/, message: '使用 HTTPS 地址或站内路径' }]}><Input maxLength={1024} placeholder="https://... 或 /uploads/..." /></Form.Item>
           <Space className="editor-selects" size="large" wrap>
-            <Form.Item extra={kind === 'note' ? <span>可在 <Link to="/categories">分类管理</Link> 新建专栏</span> : undefined} label={kind === 'note' ? '专栏' : '分类'} name="categoryId"><Select allowClear options={categories.map((item) => ({ value: item.id, label: item.name }))} placeholder="未分类" style={{ width: 220 }} /></Form.Item>
+            <Form.Item label="分类" name="categoryId"><Select allowClear options={categories.map((item) => ({ value: item.id, label: item.name }))} placeholder="未分类" style={{ width: 220 }} /></Form.Item>
             <Form.Item label="标签" name="tagIds"><Select mode="multiple" options={tags.map((item) => ({ value: item.id, label: item.name }))} placeholder="选择标签" style={{ minWidth: 250 }} /></Form.Item>
           <Form.Item label="状态" name="status"><Select options={[{ value: 'draft', label: '草稿' }, { value: 'published', label: '发布' }]} style={{ width: 140 }} /></Form.Item>
-          <Form.Item label={kind === 'post' ? '置顶首页' : '精选手记'} name="pinned" valuePropName="checked"><Switch aria-label={kind === 'post' ? '置顶首页' : '精选手记'} /></Form.Item>
+          <Form.Item label="置顶首页" name="pinned" valuePropName="checked"><Switch aria-label="置顶首页" /></Form.Item>
           </Space>
           <Form.Item><Space><Button disabled={uploadingImage} htmlType="submit" loading={saving} type="primary">保存{label}</Button><Button disabled={uploadingImage} htmlType="button" onClick={openPreview}>前台预览</Button></Space></Form.Item>
         </Form>
@@ -146,7 +147,9 @@ function PostEditorForm({ kind }: { kind: 'post' | 'note' }) {
 }
 
 // Changing article IDs must also reset draft versions and pending autosave work.
-export default function PostEditor({ kind }: { kind: 'post' | 'note' }) {
+export default function PostEditor({ kind: legacyKind = 'post' }: { kind?: 'post' | 'note' }) {
   const { id } = useParams()
-  return <PostEditorForm key={`${kind}-${id ?? 'new'}`} kind={kind} />
+  const post = useLoaderData() as Post | undefined
+  const kind = post?.kind ?? legacyKind
+  return <PostEditorForm key={`${kind}-${id ?? 'new'}`} kind={kind} post={post} />
 }

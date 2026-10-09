@@ -40,10 +40,8 @@ export async function loader({ request }: Route.LoaderArgs) {
 }
 
 const destinations = [
-  { to: "/notes", name: "手记", detail: "随笔与实践" },
-  { to: "/thinking", name: "思考", detail: "短想法与片段" },
-  { to: "/says", name: "一言", detail: "收藏的句子" },
-  { to: "/timeline", name: "时间线", detail: "按时间回看" },
+  { to: "/archive", name: "归档", detail: "按时间回看" },
+  { to: "/about", name: "关于", detail: "认识博主" },
   { to: "/friends", name: "友链", detail: "常去的地方" },
   { to: "/projects", name: "项目", detail: "做过的东西" },
 ];
@@ -71,7 +69,7 @@ export default function Home() {
         {content}
       </div></li>;
     })}</ol>
-    <Link className="section-more" to="/timeline">更多发布内容 ↗</Link>
+    <Link className="section-more" to="/archive">更多发布内容 ↗</Link>
   </aside>;
   return (
     <div className="site-shell">
@@ -88,9 +86,7 @@ export default function Home() {
               {site.statusText && <p className="hero-status"><span aria-hidden="true">{site.statusEmoji}</span><span>近况</span><strong>{site.statusText}</strong></p>}
               <div className="hero-links"><Link to="/posts">阅读文章 <span aria-hidden="true">↗</span></Link><Link to="/about">关于这个博客 <span aria-hidden="true">↗</span></Link>{site.githubUrl && <a href={site.githubUrl} rel="noopener noreferrer" target="_blank">GitHub ↗</a>}</div>
               {stats.posts + stats.notes + stats.thoughts > 0 && <dl aria-label="博客记录" className="hero-stats">
-                {stats.posts > 0 && <div><dt>文章</dt><dd>{stats.posts.toLocaleString("zh-CN")}</dd></div>}
-                {stats.notes > 0 && <div><dt>手记</dt><dd>{stats.notes.toLocaleString("zh-CN")}</dd></div>}
-                {stats.thoughts > 0 && <div><dt>思考</dt><dd>{stats.thoughts.toLocaleString("zh-CN")}</dd></div>}
+                <div><dt>文章</dt><dd>{(stats.posts + stats.notes + stats.thoughts).toLocaleString("zh-CN")}</dd></div>
                 {stats.firstPublishedAt && <div><dt>开始于</dt><dd><time dateTime={stats.firstPublishedAt}>{formatDate(stats.firstPublishedAt, true)}</time></dd></div>}
               </dl>}
             </div>
@@ -114,12 +110,12 @@ export default function Home() {
         {recentActivity}
         </div>
         {monthlyTotal > 0 && <section aria-labelledby="home-yearline-title" className={`home-yearline${showYearlineBars ? "" : " is-sparse"}`}>
-          <div className="section-heading"><h2 id="home-yearline-title">发布足迹</h2><Link className="section-more" to="/timeline">查看时间线 ↗</Link></div>
+          <div className="section-heading"><h2 id="home-yearline-title">发布足迹</h2><Link className="section-more" to="/archive">查看归档 ↗</Link></div>
           <p>过去 12 个月公开了 {monthlyTotal} 条内容。</p>
           {showYearlineBars && <div className="home-yearline-scroll"><ol className="home-yearline-bars">{months.map((month) => {
             const label = `${month.month}，${month.count} 条公开内容`;
             const marker = <><span aria-hidden="true" className={`home-yearline-bar${month.count ? "" : " is-empty"}`} style={{ height: `${month.count ? Math.max(8, Math.round(month.count / peak * 88)) : 3}px` }} /><time aria-hidden="true" dateTime={`${month.month}-01`}>{Number(month.month.slice(5))}月</time></>;
-            return <li key={month.month}>{month.count ? <Link aria-label={label} title={label} to={`/timeline?month=${month.month}`}>{marker}</Link> : <span title={label}>{marker}<span className="sr-only">{label}</span></span>}</li>;
+            return <li key={month.month}>{month.count ? <Link aria-label={label} title={label} to={`/archive?month=${month.month}`}>{marker}</Link> : <span title={label}>{marker}<span className="sr-only">{label}</span></span>}</li>;
           })}</ol></div>}
         </section>}
         <nav aria-label="继续探索" className="home-explore"><div className="home-explore-inner">
