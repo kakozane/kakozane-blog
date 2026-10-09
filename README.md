@@ -28,10 +28,14 @@
 | `api/internal/model/`、`api/migrations/` | 数据类型；带版本记录的建表 SQL。 |
 | `api/Dockerfile`、`go.mod`、`go.sum` | API 镜像、依赖与校验和。 |
 | `web/app/routes.ts`、`app/routes/` | 前台页面路由：首页、文章列表与详情、手记及专栏、思考、一言、自定义页面、时间线、话题及分类和标签、归档、搜索、订阅、友链、项目、关于、登录、注册和账号。 |
-| `web/app/root.tsx`、`app/app.css` | HTML 根布局、站点数据和前台样式。 |
+| `web/app/root.tsx`、`app/styles/app.css` | HTML 根布局、站点数据和前台样式。 |
 | `web/public/favicon.svg` | 前台浏览器标签图标的默认 Kakozane 标识；后台可改为自定义图标地址。 |
 | `web/DESIGN.md` | 前台视觉规范与组件取舍。 |
-| `web/app/components/`、`lib/`、`types/` | 组件、服务端和浏览器端请求、TypeScript 类型。 |
+| `web/app/modules/` | 按文章、认证、评论、点赞、搜索等业务分模块，每个模块按需包含页面、组件、hooks、接口、类型、loader 和工具。 |
+| `web/app/shared/` | 不依赖业务模块的公共代码：API 基础设施、公共类型、Markdown 渲染、通用组件和工具。 |
+| `web/app/layouts/` | 跨模块组合的页头、页脚，连接搜索、登录和通知入口。 |
+| `web/app/styles/` | 全局主题、基础样式和栏目样式，保持原有加载顺序。 |
+| `web/app/tests/` | 跨模块接口回归和目录依赖边界检查；模块自己的测试与实现相邻。 |
 | `web/react-router.config.ts`、`vite.config.ts`、`Dockerfile` | SSR、开发构建配置和 Node 镜像。 |
 | `admin/src/router/`、`layout/`、`pages/` | 登录保护、ProLayout 菜单及按路由加载的管理页面。 |
 | `admin/src/api/`、`types/` | 后台请求函数和模块化 TypeScript 类型。 |
@@ -90,7 +94,7 @@ docker compose -f compose.dev.yaml up --build --watch
 
 ```bash
 cd api && go test ./...
-cd ../web && corepack pnpm typecheck && corepack pnpm build && node --test app/lib/*.test.mjs
+cd ../web && corepack pnpm typecheck && corepack pnpm build && node --test "app/**/*.test.mjs"
 cd ../admin && corepack pnpm lint && corepack pnpm build
 cd .. && docker compose config -q && docker compose -f compose.prod.yaml config -q
 ```
@@ -216,12 +220,12 @@ flowchart LR
 
 ### 前台版式与在线人数
 
-前台的栏目版式集中在 `web/app/editorial.css`，基础主题和 Markdown 样式仍在 `web/app/app.css`。首页居中介绍，手记采用信纸与日期栏，思考采用动态卡，友链为头像卡，项目为文字目录；时间线可以切换舒展、紧凑、速览。手机端有底部菜单。滚动入场由 `components/page-motion.tsx` 提供，不会默认隐藏 SSR 内容；页脚背景动效开关默认关闭，设置保存到本机，系统减少动态效果时不播放。
+前台的栏目版式集中在 `web/app/styles/editorial.css`，基础主题和 Markdown 样式仍在 `web/app/styles/app.css`。首页居中介绍，手记采用信纸与日期栏，思考采用动态卡，友链为头像卡，项目为文字目录；时间线可以切换舒展、紧凑、速览。手机端有底部菜单。滚动入场由 `shared/components/page-motion.tsx` 提供，不会默认隐藏 SSR 内容；页脚背景动效开关默认关闭，设置保存到本机，系统减少动态效果时不播放。
 
 右下角显示**在线访客浏览器数**，不是已登录账号数或实名名单：
 
 - 复用 `GET /api/v1/events?visitor=<UUID>` 的 SSE 连接，连接成功时及每 25 秒发送 `presence` 事件，内容为 `{ "count": 3 }`。
-- `web/app/lib/visitor.ts` 在 localStorage 保存随机访客标识；支持 Web Locks 时串行初始化，同一浏览器同一站点的多个标签页去重。无痕、不同浏览器、不同开发域名分别计数；禁止本地存储时只能按当前页面计数。
+- `web/app/modules/presence/lib/visitor.ts` 在 localStorage 保存随机访客标识；支持 Web Locks 时串行初始化，同一浏览器同一站点的多个标签页去重。无痕、不同浏览器、不同开发域名分别计数；禁止本地存储时只能按当前页面计数。
 - 后端沿用 handler → service → repository 分层；Redis Sorted Set 记录随机标识与最近心跳时间，不记录姓名/IP。超过 75 秒没有心跳的访客在下次统计时剔除，整个集合无访问 150 秒后自动删除。
 - 断线时隐藏人数，重连后恢复。人数是近实时估计，关闭标签页不会立刻减一，也不是防机器人或审计用途的准确人数。长连接本身不代表用户正在操作。
 - 开发与生产应使用各自的 Redis 实例或数据库，避免共享统计集合。
@@ -251,7 +255,7 @@ go run ./cmd/seed-demo --apply  # 使用 config.yaml 中的数据库连接写入
 
 ### 前台 Yohaku 视觉
 
-前台统一采用 [Yohaku 设计系统](https://github.com/Innei/Yohaku/tree/main/design-system) 的暖纸色、三层中性色、梅色强调、衬线标题与紧凑控件。`web/app/yohaku-tokens.css` 维护主题和字号，`web/app/app.css` 维护基础组件，`web/app/editorial.css` 维护各栏目布局。完整规则见 `web/DESIGN.md`，上游 MIT 许可见 `THIRD_PARTY_NOTICES.md`。
+前台统一采用 [Yohaku 设计系统](https://github.com/Innei/Yohaku/tree/main/design-system) 的暖纸色、三层中性色、梅色强调、衬线标题与紧凑控件。`web/app/styles/yohaku-tokens.css` 维护主题和字号，`web/app/styles/app.css` 维护基础组件，`web/app/styles/editorial.css` 维护各栏目布局。完整规则见 `web/DESIGN.md`，上游 MIT 许可见 `THIRD_PARTY_NOTICES.md`。
 
 登录注册使用当前页面弹窗，旧 `/login`、`/register` 链接转到弹窗；在线人数展示在页脚右侧。
 
@@ -391,3 +395,43 @@ ACR 创建 `blog-api`、`blog-web`、`blog-proxy` 三个仓库，分别对应 `a
 提交这些文件后，在仓库 Actions 选择 **Build and deploy blog → Run workflow**。第一次先不勾选 deploy，确认三个镜像均构建推送成功；域名入口准备好后，再勾选 deploy 执行首次上线。使用 nginx 反代时需要设置 `Host $host`、`X-Forwarded-Proto $scheme`、`X-Real-IP $remote_addr`，并关闭 API SSE 响应缓冲。前台上游 `http://127.0.0.1:6325`，后台上游 `http://127.0.0.1:6326`。新后台域名需单独有效证书，当前根域名证书不覆盖它。
 
 GitHub Actions 仍需首次实际运行才能确认 Runner 到 ACR 的推送、SSH 连接与完整部署；本地测试和服务器 ACR 登录验证不能代替该验收。
+
+### 前台业务模块组织
+
+采用按业务组织、模块内分层的结构。`app/routes.ts` 聚合各业务路由定义，`app/routes/<业务>/` 只负责路由适配、SEO、响应头和历史地址兼容。模块内的 `loaders/*.server.ts` 组合 SSR 数据，`pages/` 组装界面，`components/` 放业务组件，`hooks/` 放交互状态，`api/` 负责请求，`types/` 定义业务契约，`lib/` 放纯计算与辅助逻辑。没有实际内容的目录不创建。
+
+浏览器组件不能在运行时导入 `.server.ts`；页面可以通过 `import type` 使用 loader 返回类型。公共 `shared/` 不反向引用业务模块。现有页面 URL 和数据契约保持不变，手记、思考等历史链接集中在 `routes/legacy/`。
+
+```text
+web/app/
+├── root.tsx                  # HTML、根 loader、全局 Provider
+├── routes.ts                 # 聚合各业务路由
+├── routes/
+│   ├── articles.ts           # 文章路由定义
+│   ├── articles/             # 页面入口、SEO
+│   └── legacy/               # 旧链接兼容
+├── modules/
+│   ├── articles/
+│   │   ├── api/              # 文章请求
+│   │   ├── types/            # 文章、分类数据契约
+│   │   ├── loaders/          # SSR 数据组合
+│   │   ├── pages/            # 列表、详情、归档等界面
+│   │   ├── components/       # 目录、列表等业务组件
+│   │   ├── hooks/            # 阅读进度、字号和沉浸模式
+│   │   └── lib/              # 阅读进度、SEO、预览工具
+│   ├── auth/                 # 登录、注册、SSO、账号
+│   ├── comments/             # 评论接口、类型、交互 hook
+│   ├── likes/                # 点赞接口、类型、交互 hook
+│   ├── search/               # 搜索页和弹窗
+│   ├── notifications/        # 通知及未读数
+│   ├── presence/             # 在线人数事件流、访客标识
+│   └── …                     # home、site、pages、friends、projects、says
+├── shared/                   # api、types、markdown、components、lib
+├── layouts/                  # 页头、页脚
+├── styles/                   # 全局主题和样式
+└── tests/                    # 跨模块回归与架构约束
+```
+
+依赖方向：路由组合业务模块，模块复用 shared；layouts 组合各模块的导航组件。模块之间只按需要引用接口、类型或组件，不通过路由文件互相调用。服务端实现与浏览器导出分开，不使用把两者混合的总出口文件。跨模块数据类型可直接 `import type`，不复制一份类型。新增功能放入对应业务模块，而不是往公共目录堆文件。
+
+执行 `cd web && node --test "app/**/*.test.mjs"` 检查模块测试、接口回归和目录依赖边界。

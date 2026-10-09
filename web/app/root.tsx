@@ -11,17 +11,17 @@ import {
 } from "react-router";
 
 import type { Route } from "./+types/root";
-import "./yohaku-tokens.css";
-import "./app.css";
-import "./editorial.css";
-import { AuthDialog } from "./components/auth-dialog";
-import { PageMotion } from "./components/page-motion";
-import { frontUser } from "./lib/auth.server";
-import { getSite } from "./lib/site.server";
-import { sectionMeta } from "./lib/section-meta";
-import { SiteHeader } from "./components/site-header";
-import { SiteFooter } from "./components/site-footer";
-import type { Site } from "./types/site";
+import "./styles/yohaku-tokens.css";
+import "./styles/app.css";
+import "./styles/editorial.css";
+import { AuthDialog } from "./modules/auth/components/auth-dialog";
+import { PageMotion } from "./shared/components/page-motion";
+import { frontUser } from "./modules/auth/api/auth.server";
+import { getSite } from "./modules/site/api/site.server";
+import { sectionMeta } from "./modules/site/lib/section-meta";
+import { SiteHeader } from "./layouts/site-header";
+import { SiteFooter } from "./layouts/site-footer";
+import type { Site } from "./modules/site/types/site";
 
 export async function loader({ request }: Route.LoaderArgs) {
   const [user, site] = await Promise.all([frontUser(request), getSite()]);

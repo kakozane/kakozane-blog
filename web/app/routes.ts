@@ -1,31 +1,24 @@
-import { type RouteConfig, index, route } from "@react-router/dev/routes";
+import type { RouteConfig } from "@react-router/dev/routes";
+import { homeRoutes } from "./routes/home";
+import { authRoutes } from "./routes/auth";
+import { articlesRoutes } from "./routes/articles";
+import { legacyRoutes } from "./routes/legacy";
+import { saysRoutes } from "./routes/says";
+import { searchRoutes } from "./routes/search";
+import { siteRoutes } from "./routes/site";
+import { friendsRoutes } from "./routes/friends";
+import { projectsRoutes } from "./routes/projects";
+import { pagesRoutes } from "./routes/pages";
 
 export default [
-  index("routes/home.tsx"),
-  route("login", "routes/login.tsx"),
-  route("register", "routes/register.tsx"),
-  route("preview", "routes/preview.tsx"),
-  route("posts", "routes/posts.tsx"),
-  route("posts/:slug", "routes/post.tsx"),
-  route("notes", "routes/notes.tsx"),
-  route("notes/series", "routes/note-series.tsx"),
-  route("notes/series/:slug", "routes/note-series-detail.tsx"),
-  route("notes/:slug", "routes/note.tsx"),
-  route("thinking", "routes/thinking.tsx"),
-  route("thinking/:slug", "routes/thought.tsx"),
-  route("says", "routes/says.tsx"),
-  route("timeline", "routes/timeline.tsx"),
-  route("search", "routes/search.tsx"),
-  route("subscribe", "routes/subscribe.tsx"),
-  route("archive", "routes/archive.tsx"),
-  route("topics", "routes/topics.tsx"),
-  route("categories/:slug", "routes/category.tsx"),
-  route("tags/:slug", "routes/tag.tsx"),
-  route("about", "routes/about.tsx"),
-  route("friends", "routes/friends.tsx"),
-  route("projects", "routes/projects.tsx"),
-  route("pages", "routes/pages.tsx"),
-  route("pages/:slug", "routes/page.tsx"),
-  route("account", "routes/account.tsx"),
-  route("*", "routes/not-found.tsx"),
+  ...homeRoutes,
+  ...authRoutes,
+  ...articlesRoutes,
+  ...legacyRoutes,
+  ...saysRoutes,
+  ...searchRoutes,
+  ...siteRoutes,
+  ...friendsRoutes,
+  ...projectsRoutes,
+  ...pagesRoutes,
 ] satisfies RouteConfig;

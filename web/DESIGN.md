@@ -5,7 +5,7 @@
 ## 统一规则
 
 - 书写优先：暖纸色背景、衬线标题、三层中性色，一种克制的强调色。界面退居内容之后。
-- `app/yohaku-tokens.css` 是上游 MIT token 的普通 CSS 适配；本项目不用 Tailwind，无需为导入 token 引入整个框架。保留来源与许可于根目录 `THIRD_PARTY_NOTICES.md`。
+- `app/styles/yohaku-tokens.css` 是上游 MIT token 的普通 CSS 适配；本项目不用 Tailwind，无需为导入 token 引入整个框架。保留来源与许可于根目录 `THIRD_PARTY_NOTICES.md`。
 - 浅色纸面 `#faf9f5`、正文 n-9 `#24231f`；深色纸面 `#1a1814`，中性色反转。强调色使用当前契约的梅色 `#c56473`，仅用于焦点、正文链接及少量状态标记。
 - 三类字体：sans 用于界面与正文，serif 用于标题、引言及日期注释，mono 用于代码；均含中文回退。字体按本地可用性回退，不依赖第三方字体服务。
 - 基础字号 14px，说明 12–13px，阅读正文 15px，栏目标题 20px，页面标题 28px，首页展示标题 36px。用户主动调整的阅读字号仍保留。
@@ -33,7 +33,7 @@
 cd web
 corepack pnpm typecheck
 corepack pnpm build
-node --test app/lib/*.test.mjs
+node --test "app/**/*.test.mjs"
 ```
 
 浏览器检查桌面/手机、浅色/深色、登录注册切换与焦点、目录/搜索/分页，以及无横向溢出。CSS 和 SSR 构建通过不能替代浏览器检查。
