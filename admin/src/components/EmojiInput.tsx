@@ -20,7 +20,7 @@ export function EmojiInput({ id, value, onChange }: EmojiInputProps) {
       placement="bottomRight"
       open={open}
       onOpenChange={setOpen}
-      content={open && <div onKeyDown={event => {
+      content={<div onKeyDown={event => {
         if (event.key === 'Escape') { event.stopPropagation(); setOpen(false); button.current?.focus() }
       }}><Suspense fallback={<Spin tip="正在加载表情"><div style={{ width: 280, height: 160 }} /></Spin>}>
         <EmojiPickerPanel onSelect={emoji => { onChange?.(emoji); setOpen(false); button.current?.focus() }} />
