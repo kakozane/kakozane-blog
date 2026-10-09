@@ -238,6 +238,9 @@ importers:
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
+      emoji-picker-react:
+        specifier: 4.22.3
+        version: 4.22.3(react@19.3.0)
       katex:
         specifier: 0.18.10
         version: 0.18.10
@@ -2244,6 +2247,12 @@ packages:
   elkjs@0.9.3:
     resolution: {integrity: sha512-f/ZeWvW/BCXbhGEf1Ujp29EASo/lk1FDnETgNKwJrsVvGZhUWCZyg3xLJjAsxfOmt8KjswHmI5EwCQcPMpOYhQ==}
 
+  emoji-picker-react@4.22.3:
+    resolution: {integrity: sha512-jrAkkoN69l5lA2Xp6P5axqoK1YdHNS1+MKMlLxwltnnnaXrojUjZaolgI/U8vdx8vFWqG42yYqpLSR83f6pwiw==}
+    engines: {node: '>=10'}
+    peerDependencies:
+      react: '>=16.8'
+
   entities@6.0.1:
     resolution: {integrity: sha512-aN97NXWF6AWBTahfVOIrB/NShkzi5H7F9r1s9mD3cDj4Ko5f2qhhVoYMibXF7GlLveb/D2ioWay8lxI97Ven3g==}
     engines: {node: '>=0.12'}
@@ -3104,6 +3113,9 @@ packages:
 
   scroll-into-view-if-needed@3.1.0:
     resolution: {integrity: sha512-49oNpRjWRvnU8NyGVmUaYG4jtTkNonFZI86MmGRDqBphEK2EXT9gdEUoQPZhuBM8yWHxCWbobltqYO5M4XrUvQ==}
+
+  shipstyles@1.0.0:
+    resolution: {integrity: sha512-1AcihfXo/mSxqeOdoKqq/5TNv+vSH0dBYPFq88PUX5FBkK5pRmY5TP9SuMNio85PQ+euUI67+KpSVk1cUVDCgA==}
 
   source-map-js@1.2.2:
     resolution: {integrity: sha512-KGj/8Y43x35aZVDtt+J4mK1hoLGHULMYfSkODJNQjNDC3oW1PqPoxMwo0pLUsWM/UEGzON/NxeHywEfNXNP3Vw==}
@@ -5246,6 +5258,11 @@ snapshots:
 
   elkjs@0.9.3: {}
 
+  emoji-picker-react@4.22.3(react@19.3.0):
+    dependencies:
+      react: 19.3.0
+      shipstyles: 1.0.0
+
   entities@6.0.1: {}
 
   error-ex@1.3.4:
@@ -6432,6 +6449,8 @@ snapshots:
   scroll-into-view-if-needed@3.1.0:
     dependencies:
       compute-scroll-into-view: 3.1.1
+
+  shipstyles@1.0.0: {}
 
   source-map-js@1.2.2: {}
 

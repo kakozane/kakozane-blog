@@ -1,6 +1,8 @@
 import { Button, Card, Form, Input, Typography, message } from 'antd'
 import { useEffect, useState } from 'react'
 
+import { EmojiInput } from '../components/EmojiInput'
+
 import { getSite, updateSite } from '../api/site'
 import type { Site } from '../types/site'
 
@@ -63,7 +65,7 @@ export default function Settings() {
           </>}</Form.List>
           <Typography.Title level={4}>站长近况</Typography.Title>
           <Typography.Paragraph type="secondary">填写表情和文字后显示在首页；两项都留空即可隐藏。</Typography.Paragraph>
-          <Form.Item label="表情" name="statusEmoji" rules={[{ max: 16 }]}><Input maxLength={16} placeholder="例如 💻" /></Form.Item>
+          <Form.Item label="表情" name="statusEmoji" rules={[{ max: 16 }]}><EmojiInput /></Form.Item>
           <Form.Item label="近况" name="statusText" rules={[{ max: 160 }]}><Input maxLength={160} placeholder="例如 正在整理新的文章" /></Form.Item>
           <Form.Item extra="可选；到期后自动从前台隐藏，留空则持续显示" label="显示至" name="statusUntil"><Input type="datetime-local" /></Form.Item>
           <Button htmlType="submit" loading={saving} type="primary">保存设置</Button>
