@@ -1,9 +1,9 @@
 import { useEffect, useState, type CSSProperties } from "react";
 
 export function AmbientEffect() {
-  const [enabled, setEnabled] = useState(false);
+  const [enabled, setEnabled] = useState(true);
   useEffect(() => {
-    try { setEnabled(localStorage.getItem("blog-ambient") === "on"); } catch { /* 使用默认关闭状态。 */ }
+    try { setEnabled(localStorage.getItem("blog-ambient") !== "off"); } catch { /* 使用默认开启状态。 */ }
   }, []);
   function toggle() {
     const next = !enabled;
