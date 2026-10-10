@@ -425,10 +425,12 @@ button { cursor: pointer; }
 .posts-layout { display: grid; grid-template-columns: minmax(0, 1fr) 224px; gap: 48px; align-items: start; }
 .posts-results { grid-column: 1; grid-row: 1; min-width: 0; }
 .posts-sidebar { grid-column: 2; grid-row: 1; position: sticky; top: 88px; padding: 16px; border: 1px solid var(--border-soft); border-radius: 6px; }
-.posts-index .post-search { max-width: none; height: 40px; margin: 0; padding: 0; border: 0; border-radius: 0; border-bottom: 1px solid var(--border-soft); }
-.posts-index .post-search input { padding: 0; border-radius: 0; font-size: var(--text-copy-13); }
+.posts-index .post-search { max-width: none; height: 44px; margin: 0; padding: 3px; border: 1px solid var(--border-soft); border-radius: 10px; background: var(--background); }
+.posts-index .post-search input { padding: 0 10px; border-radius: 7px; color: var(--foreground); font-size: var(--text-copy-13); }
 .posts-index .post-search:focus-within { border-color: var(--primary); }
-.posts-index .post-search button { min-width: 40px; padding: 0 4px; border-radius: 0; color: var(--muted-foreground); background: transparent; font-size: var(--text-label-12); }
+.posts-index .post-search button { display: grid; place-items: center; flex: 0 0 36px; min-width: 36px; min-height: 36px; padding: 0; border-radius: 7px; color: var(--muted-foreground); background: transparent; }
+.posts-index .post-search button:hover { color: var(--foreground); background: var(--muted); }
+.posts-index .post-search button:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
 .posts-sidebar-section { padding-top: 20px; }
 .posts-sidebar-section h2 { margin: 0 0 12px; font-family: var(--font-sans); font-size: var(--text-label-12); font-weight: 500; color: var(--muted-foreground); }
 .posts-sidebar-section p { margin: 0 0 8px; font-size: var(--text-label-12); line-height: 1.8; color: var(--muted-foreground); }

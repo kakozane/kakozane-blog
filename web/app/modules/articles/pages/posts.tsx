@@ -1,3 +1,4 @@
+import { Search } from "lucide-react";
 import type { loadPosts } from "../loaders/posts.server";
 import { Form, Link, useLoaderData } from "react-router";
 import { PostList } from "../components/post-list";
@@ -21,10 +22,10 @@ export default function Posts() {
       <aside aria-label="文章检索" className="posts-sidebar">
       <Form className="post-search" method="get" role="search">
         <label className="sr-only" htmlFor="article-query">搜索文章</label>
-        <input defaultValue={query} id="article-query" maxLength={100} name="q" placeholder="搜索文章标题或摘要" type="search" />
+        <input defaultValue={query} id="article-query" maxLength={100} name="q" placeholder="搜索文章…" type="search" />
         {view === "compact" && <input name="view" type="hidden" value="compact" />}
         {sort !== "newest" && <input name="sort" type="hidden" value={sort} />}
-        <button type="submit">搜索</button>
+        <button aria-label="搜索文章" title="搜索文章" type="submit"><Search size={17} strokeWidth={1.7} aria-hidden="true" /></button>
       </Form>
       <div className="posts-sidebar-section"><h2>标签</h2>{tags.length ? <div className="posts-tag-links">{tags.slice(0, 12).map((tag) => <Link key={tag.id} to={`/tags/${encodeURIComponent(tag.slug)}`}>{tag.name}</Link>)}</div> : <p>标签会随着写作慢慢积累。</p>}<Link className="posts-all-topics" to="/topics">分类与标签 ↗</Link></div>
       <nav aria-label="浏览文章" className="posts-sidebar-links"><Link to="/archive">时间归档 ↗</Link><Link to="/subscribe">订阅更新 ↗</Link></nav>
