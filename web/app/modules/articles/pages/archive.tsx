@@ -44,11 +44,11 @@ export default function Archive() {
           previousYear = itemYear;
           return <div key={item.id}>
             {showYear && <h2 className="timeline-year-heading">{itemYear}</h2>}
-            {showMonth && <h3 className="timeline-month-heading">{itemMonth}</h3>}
+            {showMonth && <h3 className="timeline-month-heading [margin:24px_0_4px] text-muted-foreground text-[length:var(--text-label-12)] font-normal tracking-[.15em]">{itemMonth}</h3>}
             <article className="timeline-entry">
               <time dateTime={date}>{formatDate(date, true)}</time>
               <span className="timeline-dot" aria-hidden="true" />
-              <div><span className="timeline-kind">{contentLabel(item.kind)}{item.pinned && <span className="timeline-featured"> · 精选</span>}</span><h3><Link to={contentPath(item.kind, item.slug)}>{item.title}</Link></h3>{item.excerpt && <p>{item.excerpt}</p>}</div>
+              <div><span className="timeline-kind">{contentLabel(item.kind)}{item.pinned && <span className="timeline-featured text-primary"> · 精选</span>}</span><h3><Link to={contentPath(item.kind, item.slug)}>{item.title}</Link></h3>{item.excerpt && <p>{item.excerpt}</p>}</div>
             </article>
           </div>;
         })}

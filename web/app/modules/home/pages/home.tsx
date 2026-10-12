@@ -50,7 +50,7 @@ export default function Home() {
       <main>
         <section className="hero">
           <div className="hero-inner">
-            <div className="hero-copy">
+            <div className="hero-copy min-w-0">
               <div className="hero-avatar">{site.avatarUrl ? <img alt={`${site.title} 的头像`} src={site.avatarUrl} /> : <span aria-hidden="true">{site.title.slice(0, 1)}</span>}</div>
               <h1>你好，我是 <span>{site.title}</span><span className="hero-wave" aria-hidden="true"> 👋</span></h1>
               <p className="hero-label">{taglinePhrases(site.tagline).map((phrase, index) => <span className="hero-phrase" key={index}>{phrase}</span>)}</p>
@@ -84,7 +84,7 @@ export default function Home() {
         {monthlyTotal > 0 && <section aria-labelledby="home-yearline-title" className={`home-yearline${showYearlineBars ? "" : " is-sparse"}`}>
           <div className="section-heading"><h2 id="home-yearline-title">发布足迹</h2><Link className="section-more" to="/archive">查看归档 ↗</Link></div>
           <p>过去 12 个月公开了 {monthlyTotal} 条内容。</p>
-          {showYearlineBars && <div className="home-yearline-scroll"><ol className="home-yearline-bars">{months.map((month) => {
+          {showYearlineBars && <div className="home-yearline-scroll overflow-x-auto"><ol className="home-yearline-bars">{months.map((month) => {
             const label = `${month.month}，${month.count} 条公开内容`;
             const marker = <><span aria-hidden="true" className={`home-yearline-bar${month.count ? "" : " is-empty"}`} style={{ height: `${month.count ? Math.max(8, Math.round(month.count / peak * 88)) : 3}px` }} /><time aria-hidden="true" dateTime={`${month.month}-01`}>{Number(month.month.slice(5))}月</time></>;
             return <li key={month.month}>{month.count ? <Link aria-label={label} title={label} to={`/archive?month=${month.month}`}>{marker}</Link> : <span title={label}>{marker}<span className="sr-only">{label}</span></span>}</li>;

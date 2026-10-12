@@ -73,11 +73,11 @@ export function CodeBlock({ children }: { children: ReactNode }) {
   }
 
   return <div className={`code-block${isMermaid ? " mermaid-block" : ""}`}>
-    {language && <span className="code-language">{language.toUpperCase()}</span>}
+    {language && <span className="code-language absolute top-4.5 left-5.5 text-muted-foreground text-[length:var(--text-label-12)] font-medium leading-[1]">{language.toUpperCase()}</span>}
     <button aria-live="polite" className="code-copy" onClick={() => void copy()} type="button">{isMermaid && copyStatus === "复制代码" ? "复制源码" : copyStatus}</button>
-    {isMermaid && diagram && <img alt="Mermaid 图表，源码可在下方展开" className="mermaid-image" src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(diagram)}`} style={diagramWidth ? { width: diagramWidth } : undefined} />}
+    {isMermaid && diagram && <img alt="Mermaid 图表，源码可在下方展开" className="mermaid-image block max-w-full h-auto my-0 mx-auto" src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(diagram)}`} style={diagramWidth ? { width: diagramWidth } : undefined} />}
     <pre hidden={Boolean(isMermaid && diagram)} ref={preRef}>{children}</pre>
     {isMermaid && diagram && <details className="mermaid-source"><summary>查看源码</summary><pre>{children}</pre></details>}
-    {isMermaid && diagramError && <p className="mermaid-error" role="status">图表无法渲染，已显示源码，请检查 Mermaid 语法。</p>}
+    {isMermaid && diagramError && <p className="mermaid-error [margin:12px_0_0] text-[var(--destructive)] text-[length:var(--text-copy-13)]" role="status">图表无法渲染，已显示源码，请检查 Mermaid 语法。</p>}
   </div>;
 }

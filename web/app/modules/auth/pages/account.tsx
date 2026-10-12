@@ -50,7 +50,7 @@ export default function Account() {
         <h1>我的账号</h1>
         <NotificationInbox />
         <p>账号：{user.username}</p>
-        {message && <p className="account-message" role="alert">{message}</p>}
+        {message && <p className="account-message text-[var(--destructive)]!" role="alert">{message}</p>}
         <section>
           <h2>个人资料</h2>
           <form onSubmit={saveName}>
@@ -60,8 +60,8 @@ export default function Account() {
           </form>
         </section>
         <section aria-labelledby="account-likes-title" id="liked">
-          <h2 id="account-likes-title">我喜欢的内容{likes && <span className="account-likes-count">{likes.total}</span>}</h2>
-          {likes === null ? <p className="account-likes-empty">暂时无法读取喜欢的内容，请稍后刷新。</p> : likes.items.length === 0 ? <p className="account-likes-empty">点过赞的公开内容会显示在这里。</p> : <ol className="account-likes-list">{likes.items.map((item) => <li key={`${item.kind}-${item.slug}`}><div><span>{contentLabel(item.kind)}</span><Link to={contentPath(item.kind, item.slug)}>{item.title}</Link></div><time dateTime={item.likedAt}>{formatDate(item.likedAt, true)}</time></li>)}</ol>}
+          <h2 id="account-likes-title">我喜欢的内容{likes && <span className="account-likes-count ml-2 text-muted-foreground text-[length:var(--text-copy-14)] font-normal">{likes.total}</span>}</h2>
+          {likes === null ? <p className="account-likes-empty text-muted-foreground text-[length:var(--text-copy-14)]">暂时无法读取喜欢的内容，请稍后刷新。</p> : likes.items.length === 0 ? <p className="account-likes-empty text-muted-foreground text-[length:var(--text-copy-14)]">点过赞的公开内容会显示在这里。</p> : <ol className="account-likes-list">{likes.items.map((item) => <li key={`${item.kind}-${item.slug}`}><div><span>{contentLabel(item.kind)}</span><Link to={contentPath(item.kind, item.slug)}>{item.title}</Link></div><time dateTime={item.likedAt}>{formatDate(item.likedAt, true)}</time></li>)}</ol>}
           {likes && likes.total > likes.pageSize && <nav aria-label="喜欢内容分页" className="pagination">{likes.page > 1 ? <Link to={`/account?likesPage=${likes.page - 1}#liked`}>← 上一页</Link> : <span />}{likes.page * likes.pageSize < likes.total ? <Link to={`/account?likesPage=${likes.page + 1}#liked`}>下一页 →</Link> : <span />}</nav>}
         </section>
         <section>

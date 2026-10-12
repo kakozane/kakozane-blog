@@ -19,7 +19,7 @@ export function PostList({ posts, view = "preview" }: { posts: Post[]; view?: Po
                 <time dateTime={post.publishedAt ?? post.createdAt}>
                   {formatDate(post.publishedAt ?? post.createdAt, true)}
                 </time>
-                {post.pinned && <><span aria-hidden="true">·</span><span className="post-pinned">置顶</span></>}
+                {post.pinned && <><span aria-hidden="true">·</span><span className="post-pinned text-primary font-medium">置顶</span></>}
                 {post.categoryName && <><span aria-hidden="true">·</span><Link to={`/categories/${encodeURIComponent(post.categorySlug)}`}>{post.categoryName}</Link></>}
               </div>
               <h3><Link to={contentPath(post.kind, post.slug)}>{post.title}</Link></h3>

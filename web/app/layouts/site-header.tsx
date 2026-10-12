@@ -144,7 +144,7 @@ export function SiteHeader() {
     </header>
         <details className="site-menu"><summary><span className="mobile-site-name">{site.title}</span><span>菜单 ☰</span></summary><nav aria-label="小屏导航" className="site-menu-panel">{links.map((item, index) => item.to.startsWith("https://") ? <a href={item.to} key={`${item.to}-${index}`} onClick={(event) => event.currentTarget.closest("details")?.removeAttribute("open")} rel="noopener noreferrer" target="_blank">{item.label} ↗</a> : <NavLink end={item.to === "/"} key={`${item.to}-${index}`} onClick={(event) => event.currentTarget.closest("details")?.removeAttribute("open")} to={item.to}>{item.label}</NavLink>)}</nav></details>
     {!user && <SSOPrompt />}
-    {footer && online !== null && createPortal(<div className="online-visitors" title="近 75 秒保持连接的浏览器，同一浏览器多标签页合并统计"><span aria-hidden="true" className="online-dot" /><span><strong>{online}</strong> 人在线</span></div>, footer)}
+    {footer && online !== null && createPortal(<div className="online-visitors" title="近 75 秒保持连接的浏览器，同一浏览器多标签页合并统计"><span aria-hidden="true" className="online-dot w-1.5 h-1.5 rounded-full [background:var(--color-success)]" /><span><strong>{online}</strong> 人在线</span></div>, footer)}
     <SearchDialog onClose={() => setSearchOpen(false)} open={searchOpen} />
     {announcement && <div className="site-announcement" role="status"><span>刚发布{contentLabel(announcement.kind)}：</span><Link to={contentPath(announcement.kind, announcement.slug)}>{announcement.title}</Link><button aria-label="关闭新内容提醒" onClick={() => setAnnouncement(null)} type="button">×</button></div>}
     {error && <p className="site-error" role="alert">{error}</p>}

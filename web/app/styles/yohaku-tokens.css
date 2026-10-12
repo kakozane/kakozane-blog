@@ -62,7 +62,7 @@
   --color-warning: #a87a3d; /* 朽葉 kuchiba */
   --color-error: #a64953;   /* 蘇芳 suoh */
 
-  /* border-border utility — value is overridden in apps/web variables.css per theme */
+  /* border-outline utility — value is overridden in apps/web variables.css per theme */
   --color-border: rgba(24, 24, 27, 0.1);
 
   --color-muted-1: var(--color-neutral-1);

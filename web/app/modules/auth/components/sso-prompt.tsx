@@ -40,6 +40,6 @@ export function SSOPrompt({ returnTo }: { returnTo?: string }) {
   return <aside className="sso-prompt" aria-label="使用已有登录身份">
     <p>您已登录后台（{candidate.user.displayName}），是否使用此账号登录前台？</p>
     <div><button disabled={pending} onClick={() => void confirm()} type="button">{pending ? "登录中…" : "使用此账号登录"}</button><button disabled={pending} onClick={() => setDismissed(true)} type="button">暂不登录</button></div>
-    {error && <p className="auth-error" role="alert">{error}</p>}
+    {error && <p className="auth-error m-0 text-[var(--destructive)] text-[length:var(--text-copy-14)]" role="alert">{error}</p>}
   </aside>;
 }

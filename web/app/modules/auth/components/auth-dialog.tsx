@@ -24,7 +24,7 @@ export function AuthDialog() {
   function close() { void navigate(next, { replace: true, preventScrollReset: true }); }
   return <dialog ref={dialog} className="auth-dialog" aria-labelledby="auth-dialog-title" onCancel={(event) => { event.preventDefault(); close(); }} onClick={(event) => { if (event.target === event.currentTarget) close(); }}>
     <div className="auth-dialog-content">
-      <button className="auth-dialog-close" aria-label="关闭登录注册" onClick={close} type="button">×</button>
+      <button className="auth-dialog-close absolute right-3 top-2 w-9 h-9 [border:0] bg-transparent text-muted-foreground text-[length:var(--text-title-24)] cursor-pointer" aria-label="关闭登录注册" onClick={close} type="button">×</button>
       {open && (mode === "register" ? <RegisterForm next={next} /> : <LoginForm next={next} />)}
     </div>
   </dialog>;

@@ -35,7 +35,7 @@ export default function AuthForm({ next = "/" }: { next?: string }) {
         <form className="auth-form" onSubmit={submit}>
           <div className="auth-field"><label htmlFor="username">账号</label><input autoComplete="username" id="username" maxLength={64} name="username" required /></div>
           <div className="auth-field"><label htmlFor="password">密码</label><input autoComplete="current-password" id="password" name="password" required type="password" /></div>
-          {error && <p className="auth-error" role="alert">{error}</p>}
+          {error && <p className="auth-error m-0 text-[var(--destructive)] text-[length:var(--text-copy-14)]" role="alert">{error}</p>}
           <button className="auth-submit" disabled={pending} type="submit">{pending ? "登录中…" : "登录"}</button>
         </form>
         <p className="auth-switch">还没有账号？<Link preventScrollReset replace to={authPagePath("register", next)}>注册账号</Link></p>

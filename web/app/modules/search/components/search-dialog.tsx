@@ -45,7 +45,7 @@ export function SearchDialog({ open, onClose }: { open: boolean; onClose: () => 
     event.preventDefault();
     links[next].focus();
   }} ref={dialogRef}>
-    <div className="quick-search-panel">
+    <div className="quick-search-panel flex flex-col max-h-[min(76vh,_720px)]">
       <div className="quick-search-heading"><h2 id="quick-search-title">搜索博客</h2><button aria-label="关闭搜索" onClick={() => dialogRef.current?.close()} type="button">×</button></div>
       <Form action="/search" className="quick-search-form" method="get" onSubmit={onClose} role="search">
         <label className="sr-only" htmlFor="quick-search-input">搜索文章和页面</label>
@@ -53,14 +53,14 @@ export function SearchDialog({ open, onClose }: { open: boolean; onClose: () => 
         <button type="submit">搜索</button>
       </Form>
       <div aria-live="polite" className="quick-search-results">
-        {!term && <p className="quick-search-hint">输入关键词查找已发布的内容。</p>}
-        {term && state.term !== term && <p className="quick-search-hint">正在搜索…</p>}
-        {term && state.term === term && state.error && <p className="quick-search-hint" role="alert">{state.error}</p>}
-        {term && state.term === term && !state.error && state.items.length === 0 && <p className="quick-search-hint">没有找到匹配的内容。</p>}
-        {term && state.term === term && !state.error && state.items.length > 0 && <ul>{state.items.map((item) => <li key={item.key}><Link onClick={onClose} to={item.href}><span className="quick-search-item-label">{item.label}</span><span><strong>{item.title}</strong>{item.excerpt && <small>{item.excerpt}</small>}</span><span aria-hidden="true">↗</span></Link></li>)}</ul>}
+        {!term && <p className="quick-search-hint my-5.5 mx-2 text-muted-foreground text-[length:var(--text-copy-13)]">输入关键词查找已发布的内容。</p>}
+        {term && state.term !== term && <p className="quick-search-hint my-5.5 mx-2 text-muted-foreground text-[length:var(--text-copy-13)]">正在搜索…</p>}
+        {term && state.term === term && state.error && <p className="quick-search-hint my-5.5 mx-2 text-muted-foreground text-[length:var(--text-copy-13)]" role="alert">{state.error}</p>}
+        {term && state.term === term && !state.error && state.items.length === 0 && <p className="quick-search-hint my-5.5 mx-2 text-muted-foreground text-[length:var(--text-copy-13)]">没有找到匹配的内容。</p>}
+        {term && state.term === term && !state.error && state.items.length > 0 && <ul>{state.items.map((item) => <li key={item.key}><Link onClick={onClose} to={item.href}><span className="quick-search-item-label text-primary text-[length:var(--text-label-12)]">{item.label}</span><span><strong>{item.title}</strong>{item.excerpt && <small>{item.excerpt}</small>}</span><span aria-hidden="true">↗</span></Link></li>)}</ul>}
       </div>
       {term && <Link className="quick-search-all" onClick={onClose} to={`/search?q=${encodeURIComponent(term)}`}>查看全部{state.term === term && !state.error ? ` ${state.total} ` : ""}条结果 ↗</Link>}
-      <p className="quick-search-tip">↑ ↓ 选择结果 · Enter 打开 · Esc 关闭</p>
+      <p className="quick-search-tip m-0 py-[11px] px-6 [border-top:1px_solid_var(--border-soft)] text-muted-foreground text-[length:var(--text-label-12)]">↑ ↓ 选择结果 · Enter 打开 · Esc 关闭</p>
     </div>
   </dialog>;
 }

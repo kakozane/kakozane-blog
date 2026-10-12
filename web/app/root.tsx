@@ -11,9 +11,7 @@ import {
 } from "react-router";
 
 import type { Route } from "./+types/root";
-import "./styles/yohaku-tokens.css";
-import "./styles/app.css";
-import "./styles/editorial.css";
+import "./styles/tailwind.css";
 import { AuthDialog } from "./modules/auth/components/auth-dialog";
 import { PageMotion } from "./shared/components/page-motion";
 import { frontUser } from "./modules/auth/api/auth.server";
@@ -79,7 +77,7 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   <div className="site-shell">
     {root ? <SiteHeader /> : <header className="site-header"><Link className="site-logo" to="/">Kakozane</Link></header>}
     <main className="error-page">
-      <span className="error-code">{notFound ? "404" : "暂时离线"}</span>
+      <span className="error-code text-primary text-[length:var(--text-copy-13)] font-medium">{notFound ? "404" : "暂时离线"}</span>
       <h1>{notFound ? "这里还没有内容。" : "页面暂时无法打开。"}</h1>
       <p>{details}</p>
       <div className="error-actions"><Link to="/">返回首页</Link>{notFound ? <Link to="/search">搜索内容 ↗</Link> : <button onClick={() => window.location.reload()} type="button">重新加载 ↗</button>}</div>

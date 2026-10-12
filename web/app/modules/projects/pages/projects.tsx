@@ -7,7 +7,7 @@ export default function Projects() {
   const items = useLoaderData<typeof loadProjects>();
   return <div className="site-shell">
     <SiteHeader />
-    <main className="simple-page projects-page">
+    <main className="simple-page projects-page max-w-260">
       <div className="page-intro"><h1>项目</h1><p>我做过和正在做的项目。</p></div>
       {items.length === 0 && <p className="empty-posts">这里还没有公开的项目。</p>}
       <div className="projects-list">{items.map((item) => <a className="external-link" href={item.url} key={item.id} rel="noopener noreferrer" target="_blank">

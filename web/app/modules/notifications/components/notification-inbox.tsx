@@ -33,7 +33,7 @@ export function NotificationInbox() {
    window.location.assign(`${prefix}?commentsPage=${location.page}#comment-${item.commentId}`)
   } catch (cause) { setError(cause instanceof Error ? cause.message : '打开通知失败') } finally { setBusy(false) }
  }
- return <section id="notifications"><h2>评论回复通知{data && <span className="account-likes-count">{data.unread} 条未读</span>}</h2>
+ return <section id="notifications"><h2>评论回复通知{data && <span className="account-likes-count ml-2 text-muted-foreground text-[length:var(--text-copy-14)] font-normal">{data.unread} 条未读</span>}</h2>
   {error && <p role="alert">{error}</p>}
   {!data && !error && <p>正在加载…</p>}
   {data && <><ol className="account-likes-list">{data.items.map(item => <li key={item.id}><div><strong>{item.read ? '' : '● '}{item.authorName}</strong> 回复了你在《{item.title}》下的评论<p>{item.body}</p><button disabled={busy} onClick={() => void open(item)}>查看回复</button></div><time>{new Date(item.createdAt).toLocaleString('zh-CN')}</time></li>)}</ol>{data.items.length === 0 && <p>暂无回复通知。</p>}<nav className="pagination" aria-label="通知分页"><button disabled={page === 1} onClick={() => setPage(page - 1)}>上一页</button><button disabled={data.items.length < 20} onClick={() => setPage(page + 1)}>下一页</button></nav></>}

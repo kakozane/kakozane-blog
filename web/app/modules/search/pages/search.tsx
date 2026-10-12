@@ -16,7 +16,7 @@ export default function Search() {
         <input autoFocus defaultValue={query} id="site-query" maxLength={100} name="q" placeholder="搜索文章和页面" type="search" />
         <button type="submit">搜索</button>
       </Form>
-      {query && <p className="search-summary">“{query}”找到 {results.total + pages.length} 条内容</p>}
+      {query && <p className="search-summary [margin:32px_0_8px] text-muted-foreground text-[length:var(--text-copy-14)]">“{query}”找到 {results.total + pages.length} 条内容</p>}
       <div className="search-results">
         {query && results.total === 0 && pages.length === 0 && <p className="empty-posts">没有找到匹配的内容。</p>}
         {results.page === 1 && pages.map((page) => <article key={`page-${page.id}`}>

@@ -1,0 +1,23 @@
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+/* 保留既有浏览器基础排版；正文、表单的 reset 在 app.css 中显式维护。 */
+@import "./yohaku-tokens.css";
+@import "./app.css" layer(components);
+@import "./editorial.css" layer(components);
+@import "tailwindcss/utilities.css" layer(utilities);
+@source "../";
+
+@theme inline {
+  /* 原版以 px 布局，根字号为 14px；固定步长避免 rem 间距缩小。 */
+  --spacing: 4px;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-outline: var(--border);
+  --color-border-soft: var(--border-soft);
+  --color-ring: var(--ring);
+}
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));

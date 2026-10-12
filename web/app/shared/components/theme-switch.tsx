@@ -27,5 +27,5 @@ export function ThemeSwitch() {
     onClick={cycleTheme}
     title={`外观：${names[theme]}`}
     type="button"
-  ><span aria-hidden="true" className="theme-switch-icon">◐</span><span>{names[theme]}</span></button>;
+  ><span aria-hidden="true" className="theme-switch-icon text-[length:var(--text-copy-16)] leading-[1]">◐</span><span>{names[theme]}</span></button>;
 }

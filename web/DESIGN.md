@@ -37,3 +37,13 @@ node --test "app/**/*.test.mjs"
 ```
 
 浏览器检查桌面/手机、浅色/深色、登录注册切换与焦点、目录/搜索/分页，以及无横向溢出。CSS 和 SSR 构建通过不能替代浏览器检查。
+
+
+## Tailwind CSS 样式维护
+
+前台使用 Tailwind CSS 4，通过 `@tailwindcss/vite` 编译，入口为 `app/styles/tailwind.css`。
+
+- 独立组件优先在 JSX 的 `className` 中使用工具类。
+- 共享版式、Markdown 后代选择器和交互状态在 `app.css`、`editorial.css` 中用 `@apply` 组合工具类。
+- `yohaku-tokens.css` 保留品牌颜色、字号和明暗主题变量；动画关键帧及运行时计算的位置、进度保留 CSS/行内动态值。KaTeX 继续使用官方样式。
+- 不加载 Preflight，沿用已有基础 reset，避免改变文章正文和表单默认排版。间距步长为 4px，不随 14px 根字号缩小。

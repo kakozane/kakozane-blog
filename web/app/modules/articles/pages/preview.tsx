@@ -26,12 +26,12 @@ export default function Preview() {
   return <div className="site-shell">
     <SiteHeader />
     <main className="article-page">
-      <p className="preview-notice" role="status">前台预览 · 当前表单内容仅在此窗口显示</p>
+      <p className="preview-notice inline-block [margin:0_0_30px] py-[7px] px-[11px] [border:1px_solid_var(--border-soft)] rounded-[8px] bg-muted text-muted-foreground text-[length:var(--text-copy-13)]" role="status">前台预览 · 当前表单内容仅在此窗口显示</p>
       {post ? <>
         <div className="post-meta"><span>{post.kind === "page" ? "页面" : "文章"}</span></div>
         <h1>{post.title}</h1>
         {post.excerpt && <p className="article-lead">{post.excerpt}</p>}
-        {post.coverUrl && <img alt="" className="article-cover" src={post.coverUrl} />}
+        {post.coverUrl && <img alt="" className="article-cover block w-full h-auto my-9.5 mx-0 rounded-[8px]" src={post.coverUrl} />}
         <div className="article-body"><ArticleMarkdown articleID={0} source={post.contentMd} /></div>
       </> : <p className="empty-posts">等待管理后台发送内容。刷新此页后，请在编辑器中重新点击“前台预览”。</p>}
     </main>

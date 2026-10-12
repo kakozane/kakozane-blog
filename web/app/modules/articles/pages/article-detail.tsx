@@ -102,7 +102,7 @@ export default function ArticleDetail({ data }: { data: ArticleDetailData }) {
           <time dateTime={post.publishedAt ?? post.createdAt}>{formatDate(post.publishedAt ?? post.createdAt, true)}</time>
           <span>·</span><span>{post.authorName}</span>
           {post.categoryName && <><span>·</span><Link to={`/categories/${encodeURIComponent(post.categorySlug)}`}>{post.categoryName}</Link></>}
-          {post.kind === "note" && post.pinned && <><span aria-hidden="true">·</span><span className="post-pinned">精选</span></>}
+          {post.kind === "note" && post.pinned && <><span aria-hidden="true">·</span><span className="post-pinned text-primary font-medium">精选</span></>}
           {post.kind !== "thought" && <><span aria-hidden="true">·</span><span>{stats.characters.toLocaleString("zh-CN")} 字 · 阅读约 {stats.minutes} 分钟</span></>}
           {wasRevised(post.publishedAt, post.updatedAt) && <><span aria-hidden="true">·</span><span>更新于 <time dateTime={post.updatedAt}>{formatDateTime(post.updatedAt)}</time></span></>}
         </div>
@@ -110,7 +110,7 @@ export default function ArticleDetail({ data }: { data: ArticleDetailData }) {
         {resumeProgress !== null && <button className="resume-reading" onClick={resumeReading} type="button">从上次的 {resumeProgress}% 继续阅读 ↗</button>}
         {post.kind !== "thought" && post.excerpt && <p className="article-lead">{post.excerpt}</p>}
         </header>
-        {post.coverUrl && <img alt="" className="article-cover" src={post.coverUrl} />}
+        {post.coverUrl && <img alt="" className="article-cover block w-full h-auto my-9.5 mx-0 rounded-[8px]" src={post.coverUrl} />}
         <ArticleToc activeHeading={activeHeading} headings={headings} label="文章" />
         <div aria-label="阅读设置" className="article-reading-tools" role="group"><span>字体</span><button aria-pressed={readingFont === "sans"} className="font-choice" onClick={() => chooseReadingFont("sans")} type="button">默认</button><button aria-pressed={readingFont === "serif"} className="font-choice" onClick={() => chooseReadingFont("serif")} type="button">衬线</button><span aria-live="polite" className="reading-size-label">字号 · {(["标准", "较大", "最大"] as const)[readingSize]}</span><button aria-label="缩小正文字号" className="size-choice" disabled={readingSize === 0} onClick={() => changeReadingSize(readingSize === 2 ? 1 : 0)} type="button">A−</button><button aria-label="放大正文字号" className="size-choice" disabled={readingSize === 2} onClick={() => changeReadingSize(readingSize === 0 ? 1 : 2)} type="button">A+</button>{post.kind !== "thought" && <button aria-pressed={focusReading} className="focus-choice" onClick={toggleFocusReading} type="button">{focusReading ? "退出沉浸" : "沉浸阅读"}</button>}</div>
         <aside aria-label="内容快捷操作" className="article-action-aside"><div className="article-action-rail">
@@ -133,9 +133,9 @@ export default function ArticleDetail({ data }: { data: ArticleDetailData }) {
         {more.length > 0 && <nav aria-label="继续阅读" className="more-reading"><h2>更多{contentLabel(post.kind)}</h2><ul>{more.map((item) => <li key={item.id}><Link to={contentPath(item.kind, item.slug)}>{item.title}</Link><time dateTime={item.publishedAt ?? item.createdAt}>{formatDate(item.publishedAt ?? item.createdAt, true)}</time></li>)}</ul></nav>}
         <section className="comments" aria-labelledby="comments-title">
           <h2 id="comments-title">评论 <span>{comments.total}</span></h2>
-          {comments.items.length === 0 && <p className="comments-empty">还没有评论，来留下第一条想法吧。</p>}
+          {comments.items.length === 0 && <p className="comments-empty [margin:26px_0_38px] text-muted-foreground">还没有评论，来留下第一条想法吧。</p>}
           {comments.items.map((comment) => <article className={`comment${comment.parentId ? " comment-reply" : ""}`} id={`comment-${comment.id}`} key={comment.id}>
-            <div className="comment-heading"><strong>{comment.authorName}</strong>{comment.pinned && <span className="comment-pinned">置顶</span>}<time dateTime={comment.createdAt}>{formatDateTime(comment.createdAt)}</time><a aria-label={`打开 ${comment.authorName} 的评论链接`} className="comment-permalink" href={`${contentPath(post.kind, post.slug)}?comment=${comment.id}#comment-${comment.id}`}>链接 ↗</a></div>
+            <div className="comment-heading flex flex-wrap items-baseline gap-3"><strong>{comment.authorName}</strong>{comment.pinned && <span className="comment-pinned text-primary text-[length:var(--text-label-12)] font-medium">置顶</span>}<time dateTime={comment.createdAt}>{formatDateTime(comment.createdAt)}</time><a aria-label={`打开 ${comment.authorName} 的评论链接`} className="comment-permalink" href={`${contentPath(post.kind, post.slug)}?comment=${comment.id}#comment-${comment.id}`}>链接 ↗</a></div>
             {comment.parentId && <small>回复 {comment.parentAuthorName || "原评论"}</small>}
             <CommentMarkdown>{comment.body}</CommentMarkdown>
             {user && <button aria-label={`回复 ${comment.authorName}`} onClick={() => { setEditingComment(null); setBody(""); setReplyTo({ postID: post.id, id: comment.id, authorName: comment.authorName }); commentInputRef.current?.focus(); }} type="button">回复</button>}
@@ -148,7 +148,7 @@ export default function ArticleDetail({ data }: { data: ArticleDetailData }) {
             <h3 id="my-comments-title">我的评论进度</h3>
             <p>这些评论目前只有你和管理员可见。提交后 10 分钟内可以修改。</p>
             {ownComments.map((comment) => <article className="my-comment" key={comment.id}>
-              <div className="comment-heading"><strong>{comment.authorName}</strong><time dateTime={comment.createdAt}>{formatDateTime(comment.createdAt)}</time><span className={comment.status === "rejected" ? "my-comment-rejected" : "my-comment-pending"}>{comment.status === "rejected" ? "未通过" : "待审核"}</span></div>
+              <div className="comment-heading flex flex-wrap items-baseline gap-3"><strong>{comment.authorName}</strong><time dateTime={comment.createdAt}>{formatDateTime(comment.createdAt)}</time><span className={comment.status === "rejected" ? "my-comment-rejected" : "my-comment-pending"}>{comment.status === "rejected" ? "未通过" : "待审核"}</span></div>
               {comment.parentId && <small>回复 {comment.parentAuthorName || "原评论"}</small>}
               <CommentMarkdown>{comment.body}</CommentMarkdown>
               {Date.now() - new Date(comment.createdAt).getTime() < 10 * 60 * 1000 && <button onClick={() => { setEditingComment({ postID: post.id, id: comment.id }); setReplyTo(null); setBody(comment.body); setCommentPreview(false); commentInputRef.current?.scrollIntoView({ block: "center" }); commentInputRef.current?.focus(); }} type="button">修改评论</button>}
@@ -161,9 +161,9 @@ export default function ArticleDetail({ data }: { data: ArticleDetailData }) {
             {activeEdit && <p>修改后将重新等待审核。<button onClick={() => { setEditingComment(null); setBody(""); setCommentPreview(false); }} type="button">取消修改</button></p>}
             {activeReply && <p>正在回复 {activeReply.authorName} <button onClick={() => setReplyTo(null)} type="button">取消回复</button></p>}
             <textarea id="comment-body" maxLength={2000} onChange={(event) => setBody(event.target.value)} ref={commentInputRef} required rows={5} value={body} />
-            <p className="comment-help">支持粗体、链接、列表、引用和代码等 Markdown 格式。图片只显示替代文字。</p>
+            <p className="comment-help [margin:-4px_0_0] text-muted-foreground text-[length:var(--text-copy-13)] leading-[1.6]">支持粗体、链接、列表、引用和代码等 Markdown 格式。图片只显示替代文字。</p>
             <button aria-controls="comment-preview" aria-expanded={commentPreview} className="comment-preview-toggle" disabled={!body.trim()} onClick={() => setCommentPreview((open) => !open)} type="button">{commentPreview ? "收起预览" : "预览评论"}</button>
-            <section aria-label="评论预览" className="comment-preview" hidden={!commentPreview} id="comment-preview"><CommentMarkdown>{body}</CommentMarkdown></section>
+            <section aria-label="评论预览" className="comment-preview py-1 px-4 [border:1px_solid_var(--border-soft)] rounded-[8px]" hidden={!commentPreview} id="comment-preview"><CommentMarkdown>{body}</CommentMarkdown></section>
             <button className="comment-submit" disabled={submitting} type="submit">{submitting ? "提交中…" : activeEdit ? "保存修改" : "提交评论"}</button>
           </form> : <p className="comment-login"><Link preventScrollReset to={commentLoginPath}>登录</Link>后参与讨论。</p>}
           {commentMessage && <p className="comment-message" role="status">{commentMessage}</p>}

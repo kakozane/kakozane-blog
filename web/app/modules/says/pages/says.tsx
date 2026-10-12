@@ -13,10 +13,10 @@ export default function Says() {
   const says = useLoaderData<typeof loadSays>();
   return <div className="site-shell">
     <SiteHeader />
-    <main className="simple-page says-page">
+    <main className="simple-page says-page max-w-260">
       <div className="page-intro"><h1>一言</h1><p>值得留存的句子，也记下它们从哪里来。<a className="notes-rss" href="/says/feed.xml">订阅 RSS ↗</a></p></div>
       {says.items.length === 0 && <p className="empty-posts">这里还没有公开的一言。</p>}
-      <div className="say-grid">{says.items.map((say) => <blockquote className="say-card" id={`say-${say.id}`} key={say.id}>
+      <div className="say-grid [columns:2_330px] gap-x-6 mt-10.5">{says.items.map((say) => <blockquote className="say-card" id={`say-${say.id}`} key={say.id}>
         <div className="say-text"><ReactMarkdown remarkPlugins={[remarkGfm, remarkAlert]}>{say.text}</ReactMarkdown></div>
         <footer><time dateTime={say.createdAt}>{formatDate(say.createdAt, true)}</time>
           <span>{say.source && <>《{say.source}》</>}{say.source && say.author && " · "}{say.author || (!say.source && "站长说")}</span>
