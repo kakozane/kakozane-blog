@@ -164,7 +164,8 @@
 .auth-dialog .auth-intro { @apply text-[length:var(--text-copy-14)]; }
 .auth-dialog .auth-form { @apply mt-6 gap-4; }
 
-#footer-presence { @apply w-full; }
+/* 在线人数异步挂载，预留一行，避免短页面的页脚发生跳动。 */
+#footer-presence { @apply w-full min-h-[1lh] text-[length:var(--text-label-12)]; }
 
 /* Yohaku reading and compact controls, shared across all public routes. */
 html { @apply text-[length:14px] tracking-[.01em]; }
