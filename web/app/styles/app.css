@@ -691,3 +691,9 @@ mark { color: inherit; }
 ul[data-type="taskList"] { list-style: none; padding-left: 0; }
 li[data-type="taskItem"] { display: flex; gap: 8px; align-items: baseline; }
 li[data-type="taskItem"] > div { flex: 1; }
+
+.auth-code-row { display: flex; gap: 8px; align-items: stretch; }
+.auth-code-row input { flex: 1; min-width: 0; }
+.auth-code-row button { flex-shrink: 0; padding: 0 12px; border: 1px solid var(--border); border-radius: 6px; color: var(--foreground); background: var(--muted); font-size: var(--text-copy-13); }
+.auth-code-row button:disabled { cursor: not-allowed; opacity: .55; }
+.auth-code-notice { margin: 0; color: var(--muted-foreground); font-size: var(--text-copy-13); line-height: 1.6; overflow-wrap: anywhere; }

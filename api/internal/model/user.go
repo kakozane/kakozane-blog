@@ -24,3 +24,14 @@ type UserUpdate struct {
 	Role        string `json:"role"`
 	Status      string `json:"status"`
 }
+
+// RegistrationInput is separate from administrator-created users.
+type RegistrationInput struct {
+	UserInput
+	Email string `json:"email"`
+	Code  string `json:"code"`
+}
+
+type EmailCodeInput struct {
+	Email string `json:"email"`
+}

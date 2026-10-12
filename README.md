@@ -435,3 +435,30 @@ web/app/
 依赖方向：路由组合业务模块，模块复用 shared；layouts 组合各模块的导航组件。模块之间只按需要引用接口、类型或组件，不通过路由文件互相调用。服务端实现与浏览器导出分开，不使用把两者混合的总出口文件。跨模块数据类型可直接 `import type`，不复制一份类型。新增功能放入对应业务模块，而不是往公共目录堆文件。
 
 执行 `cd web && node --test "app/**/*.test.mjs"` 检查模块测试、接口回归和目录依赖边界。
+
+## 注册邮箱验证（Resend）
+
+新读者注册需填写邮箱和六位验证码；旧账号登录和管理员创建用户不受影响。邮箱唯一，旧账号的邮箱列为 NULL，不会被自动标记为已验证。登录仍使用用户名。
+
+1. 在 Resend 验证发件域名，创建仅允许发信的 API Key。
+2. 在本地 `api/config.yaml` 或服务器实际挂载的 `config.yaml` 中加入以下配置；真实密钥不能提交 Git：
+
+```yaml
+mail:
+  resend_api_key: "填写 Resend API Key"
+  from: "Retniw 博客 <noreply@retniw.cc>"
+```
+
+3. 先发布支持该配置的 API 与数据库迁移，再启用新版前台。修改配置后重启 API。旧版 API 不识别 `mail` 配置，不要先给旧版进程加入配置后重启。
+
+发送使用 Resend HTTPS API（443），不需要配置 SMTP 端口。未配置邮件服务时注册关闭，已有用户登录不受影响。`POST /api/v1/auth/register-code` 接收 `email`；`POST /api/v1/auth/register` 在原字段上增加 `email` 和 `code`。Swagger 中提供这两个接口。
+
+验证码在 Redis 保存摘要，10 分钟过期、成功验证即删除、最多输错 5 次；重发使旧验证码失效。每个邮箱 60 秒内只允许一次、每小时最多 5 次，每个 IP 每小时最多 10 次，整个 Redis 实例每 24 小时最多 90 次发送尝试（为免费额度留余量）。发送失败也消耗限额，防止上游异常被持续重试。注册数据库写入失败后需重新获取验证码。邮件被服务商接受不等于进入收件箱，实际到达率需监测。
+
+回归测试（Redis 必须是独立测试实例；数据库应已应用迁移，测试只创建并清理带唯一前缀的用户）：
+
+```bash
+cd api
+BLOG_TEST_REDIS=127.0.0.1:16389 go test ./internal/service -run 'Test(NormalizeRegistrationEmail|RegistrationEmailRedis)' -count=1
+BLOG_TEST_CONFIG=/path/to/test-config.yaml BLOG_TEST_REDIS=127.0.0.1:16389 go test ./internal/service -run TestVerifiedRegistration -count=1
+```

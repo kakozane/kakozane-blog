@@ -19,12 +19,25 @@ func NewUserHandler(userService *service.UserService) *UserHandler {
 	return &UserHandler{service: userService}
 }
 
+// Register godoc
+// @Summary 验证邮箱并注册读者账号
+// @Description 必须提供发送至该邮箱的六位验证码；成功校验后验证码一次性失效。
+// @Tags 前台认证
+// @Accept json
+// @Produce json
+// @Param input body model.RegistrationInput true "注册信息"
+// @Success 201 {object} map[string]interface{}
+// @Failure 400 {object} map[string]string
+// @Failure 409 {object} map[string]string
+// @Failure 429 {object} map[string]string
+// @Failure 503 {object} map[string]string
+// @Router /auth/register [post]
 func (h *UserHandler) Register(c *gin.Context) {
 	if !secureSameOrigin(c) {
 		return
 	}
 	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 4096)
-	var input model.UserInput
+	var input model.RegistrationInput
 	if err := c.ShouldBindJSON(&input); err != nil {
 		userError(c, service.ErrInvalidInput)
 		return
@@ -157,6 +170,12 @@ func (h *UserHandler) ChangePassword(c *gin.Context) {
 
 func userError(c *gin.Context, err error) {
 	switch {
+	case errors.Is(err, service.ErrEmailCode):
+		c.JSON(http.StatusBadRequest, gin.H{"error": "验证码错误或已失效，请重新获取"})
+	case errors.Is(err, service.ErrEmailSendLimited):
+		c.JSON(http.StatusTooManyRequests, gin.H{"error": "发送过于频繁或今日额度已用完，请稍后重试"})
+	case errors.Is(err, service.ErrEmailUnavailable):
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "邮件暂时无法发送，请稍后重试"})
 	case errors.Is(err, service.ErrInvalidInput):
 		c.JSON(http.StatusBadRequest, gin.H{"error": "请检查账号、昵称、密码和身份"})
 	case errors.Is(err, service.ErrInvalidCredentials):
@@ -164,7 +183,7 @@ func userError(c *gin.Context, err error) {
 	case errors.Is(err, service.ErrRegistrationRateLimited):
 		c.JSON(http.StatusTooManyRequests, gin.H{"error": "注册太频繁，请一小时后再试"})
 	case errors.Is(err, service.ErrConflict):
-		c.JSON(http.StatusConflict, gin.H{"error": "账号已存在，或该用户仍有关联内容"})
+		c.JSON(http.StatusConflict, gin.H{"error": "账号或邮箱已存在，或该用户仍有关联内容"})
 	case errors.Is(err, repository.ErrNotFound):
 		c.JSON(http.StatusNotFound, gin.H{"error": "用户不存在"})
 	case errors.Is(err, repository.ErrLastAdmin):
@@ -173,4 +192,37 @@ func userError(c *gin.Context, err error) {
 		slog.Error("user request failed", "error", err)
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "服务暂不可用"})
 	}
+}
+
+// SendRegistrationCode godoc
+// @Summary 发送注册邮箱验证码
+// @Tags 前台认证
+// @Accept json
+// @Produce json
+// @Param input body model.EmailCodeInput true "邮箱"
+// @Success 204
+// @Failure 400 {object} map[string]string
+// @Failure 429 {object} map[string]string
+// @Failure 503 {object} map[string]string
+// @Router /auth/register-code [post]
+func (h *UserHandler) SendRegistrationCode(c *gin.Context) {
+	if !secureSameOrigin(c) {
+		return
+	}
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 4096)
+	var input model.EmailCodeInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		userError(c, service.ErrInvalidInput)
+		return
+	}
+	ip := c.GetHeader("X-Real-IP")
+	if net.ParseIP(ip) == nil {
+		ip, _, _ = net.SplitHostPort(c.Request.RemoteAddr)
+	}
+	if err := h.service.SendRegistrationCode(c.Request.Context(), input.Email, ip); err != nil {
+		userError(c, err)
+		return
+	}
+	c.Header("Cache-Control", "no-store")
+	c.Status(http.StatusNoContent)
 }

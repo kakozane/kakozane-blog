@@ -23,3 +23,7 @@ auth:
       admin_origin: https://admin.dev.retniw.cc
     - front_origin: https://localhost:6325
       admin_origin: https://localhost:6326
+# 邮箱验证码：密钥仅存于服务器配置，未配置时新用户无法注册。
+mail:
+  resend_api_key: ""
+  from: "Retniw 博客 <noreply@retniw.cc>"

@@ -17,9 +17,14 @@ import (
 var usernamePattern = regexp.MustCompile(`^[a-z0-9_]{3,64}$`)
 var ErrRegistrationRateLimited = errors.New("registration rate limited")
 
-type UserService struct{ repo *repository.UserRepository }
+type UserService struct {
+	repo  *repository.UserRepository
+	email *RegistrationEmail
+}
 
-func NewUserService(repo *repository.UserRepository) *UserService { return &UserService{repo: repo} }
+func NewUserService(repo *repository.UserRepository, email *RegistrationEmail) *UserService {
+	return &UserService{repo: repo, email: email}
+}
 
 func (s *UserService) List(ctx context.Context, page, pageSize int, query string) ([]model.User, int64, error) {
 	if page < 1 || page > 100000 || pageSize < 1 || pageSize > 50 || len(query) > 100 {
@@ -42,7 +47,7 @@ func (s *UserService) Create(ctx context.Context, input model.UserInput) (model.
 	return user, contentWriteError(err)
 }
 
-func (s *UserService) Register(ctx context.Context, input model.UserInput, ip string) (model.User, error) {
+func (s *UserService) Register(ctx context.Context, input model.RegistrationInput, ip string) (model.User, error) {
 	count, err := s.repo.RegistrationAttempts(ctx, ip)
 	if err != nil {
 		return model.User{}, err
@@ -51,8 +56,22 @@ func (s *UserService) Register(ctx context.Context, input model.UserInput, ip st
 	if count > 5 {
 		return model.User{}, ErrRegistrationRateLimited
 	}
+	input.Username = strings.ToLower(strings.TrimSpace(input.Username))
+	input.DisplayName = strings.TrimSpace(input.DisplayName)
+	email, err := normalizeEmail(input.Email)
+	if err != nil || !usernamePattern.MatchString(input.Username) || !validDisplayName(input.DisplayName) {
+		return model.User{}, ErrInvalidInput
+	}
+	hash, err := password.Hash(input.Password)
+	if err != nil {
+		return model.User{}, ErrInvalidInput
+	}
+	if err := s.email.Verify(ctx, email, input.Code); err != nil {
+		return model.User{}, err
+	}
 	input.Role = "reader"
-	return s.Create(ctx, input)
+	user, err := s.repo.CreateRegistered(ctx, input.UserInput, hash, email)
+	return user, contentWriteError(err)
 }
 
 func (s *UserService) Update(ctx context.Context, id int64, input model.UserUpdate) (model.User, error) {
@@ -118,4 +137,8 @@ func (s *UserService) Delete(ctx context.Context, id int64) error {
 func validDisplayName(value string) bool {
 	count := utf8.RuneCountInString(value)
 	return count >= 1 && count <= 100
+}
+
+func (s *UserService) SendRegistrationCode(ctx context.Context, email, ip string) error {
+	return s.email.Send(ctx, email, ip)
 }

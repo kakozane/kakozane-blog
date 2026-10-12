@@ -15,6 +15,10 @@ type SSOSite struct {
 }
 
 type Config struct {
+	Mail struct {
+		ResendAPIKey string `yaml:"resend_api_key"`
+		From         string `yaml:"from"`
+	} `yaml:"mail"`
 	Auth struct {
 		SSOSites []SSOSite `yaml:"sso_sites"`
 	} `yaml:"auth"`

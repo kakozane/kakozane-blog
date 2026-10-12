@@ -75,7 +75,15 @@ func (r *UserRepository) ByID(ctx context.Context, id int64) (model.User, error)
 }
 
 func (r *UserRepository) Create(ctx context.Context, input model.UserInput, hash string) (model.User, error) {
-	result, err := r.db.ExecContext(ctx, "INSERT INTO users (username, display_name, password_hash, role) VALUES (?, ?, ?, ?)", input.Username, input.DisplayName, hash, input.Role)
+	return r.create(ctx, input, hash, nil)
+}
+
+func (r *UserRepository) CreateRegistered(ctx context.Context, input model.UserInput, hash, email string) (model.User, error) {
+	return r.create(ctx, input, hash, email)
+}
+
+func (r *UserRepository) create(ctx context.Context, input model.UserInput, hash string, email any) (model.User, error) {
+	result, err := r.db.ExecContext(ctx, "INSERT INTO users (username, display_name, password_hash, role, email, email_verified_at) VALUES (?, ?, ?, ?, ?, IF(? IS NULL, NULL, CURRENT_TIMESTAMP))", input.Username, input.DisplayName, hash, input.Role, email, email)
 	if err != nil {
 		return model.User{}, err
 	}

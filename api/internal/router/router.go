@@ -25,6 +25,7 @@ func New(swaggerEnabled bool, healthHandler *handler.HealthHandler, authHandler 
 	authHandler.RegisterSSO(auth, service.ScopeFront)
 	auth.POST("/login", authHandler.FrontLogin)
 	auth.POST("/register", userHandler.Register)
+	auth.POST("/register-code", userHandler.SendRegistrationCode)
 	auth.GET("/me", authHandler.FrontMe)
 	auth.POST("/logout", authHandler.FrontLogout)
 	frontProfile := api.Group("/auth", authHandler.RequireFront)

@@ -71,7 +71,7 @@ func run() error {
 	contentRepo := repository.NewContentRepository(db)
 	eventService := service.NewEventService(repository.NewEventRepository(redisClient))
 	contentService := service.NewContentService(contentRepo, eventService)
-	userService := service.NewUserService(repository.NewUserRepository(db, redisClient))
+	userService := service.NewUserService(repository.NewUserRepository(db, redisClient), service.NewRegistrationEmail(redisClient, cfg.Mail.ResendAPIKey, cfg.Mail.From))
 	commentService := service.NewCommentService(repository.NewCommentRepository(db, redisClient), contentRepo, repository.NewAuthRepository(db, redisClient))
 	likeService := service.NewLikeService(repository.NewLikeRepository(db), contentRepo)
 	friendService := service.NewFriendService(repository.NewFriendRepository(db))

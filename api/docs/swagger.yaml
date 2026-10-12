@@ -7,6 +7,11 @@ definitions:
       username:
         type: string
     type: object
+  model.EmailCodeInput:
+    properties:
+      email:
+        type: string
+    type: object
   model.Post:
     properties:
       authorId:
@@ -76,6 +81,21 @@ definitions:
         type: string
       version:
         type: integer
+    type: object
+  model.RegistrationInput:
+    properties:
+      code:
+        type: string
+      displayName:
+        type: string
+      email:
+        type: string
+      password:
+        type: string
+      role:
+        type: string
+      username:
+        type: string
     type: object
   model.Revision:
     properties:
@@ -1016,6 +1036,90 @@ paths:
               type: string
             type: object
       summary: 前台认证 - Me
+      tags:
+      - 前台认证
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      description: 必须提供发送至该邮箱的六位验证码；成功校验后验证码一次性失效。
+      parameters:
+      - description: 注册信息
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/model.RegistrationInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "429":
+          description: Too Many Requests
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Service Unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: 验证邮箱并注册读者账号
+      tags:
+      - 前台认证
+  /auth/register-code:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 邮箱
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/model.EmailCodeInput'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "429":
+          description: Too Many Requests
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Service Unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: 发送注册邮箱验证码
       tags:
       - 前台认证
   /health:

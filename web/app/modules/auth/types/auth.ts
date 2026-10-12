@@ -4,6 +4,8 @@ export interface LoginInput {
 }
 
 export interface RegisterInput extends LoginInput {
+  email: string;
+  code: string;
   displayName: string;
 }
 

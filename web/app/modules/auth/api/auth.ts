@@ -61,3 +61,14 @@ export async function changePassword(oldPassword: string, newPassword: string): 
     throw new Error(data.error ?? "修改失败");
   }
 }
+
+export async function sendRegistrationCode(email: string): Promise<void> {
+  const response = await fetch(`${endpoint}/register-code`, {
+    method: "POST", headers: { "Content-Type": "application/json" }, credentials: "same-origin",
+    body: JSON.stringify({ email }),
+  });
+  if (!response.ok) {
+    const data = await response.json() as { error?: string };
+    throw new Error(data.error ?? "验证码发送失败，请稍后重试");
+  }
+}
