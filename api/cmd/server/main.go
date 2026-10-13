@@ -14,6 +14,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/aliyun/alibabacloud-oss-go-sdk-v2/oss"
 	"github.com/go-sql-driver/mysql"
 	"github.com/kakozane/kakozane-blog/api/internal/config"
 	"github.com/kakozane/kakozane-blog/api/internal/handler"
@@ -39,6 +40,7 @@ func main() {
 }
 
 func run() error {
+	fmt.Println("OSS Go SDK Version: ", oss.Version())
 	path := os.Getenv("BLOG_CONFIG_PATH")
 	if path == "" {
 		path = "config.yaml"

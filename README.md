@@ -84,7 +84,7 @@ docker compose -f compose.dev.yaml up --build --watch
 docker compose -f compose.dev.yaml up --build --watch
 ```
 
-以后每天启动只需运行 `docker compose -f compose.dev.yaml up --watch`，无需每次加 `--build`。保持它运行，保存 `web/`、`admin/` 中的 React、CSS 等源码后，Compose 会同步文件，Vite 会热更新；部分 SSR 路由修改会刷新页面。保存 `api/` 中的 Go 源码后，Compose 会同步文件并自动重新编译、重启 API。**改完业务代码不用再执行 Compose 命令。**浏览器仍访问上面的三个 `https://localhost` 地址，登录与 Cookie 正常工作。Watch 停止后容器可能继续运行，但源码不再自动同步；重新运行 `up --watch` 即可。
+以后每天在项目根目录运行 `make dev` 即可启动并监听变化，它等价于 `docker compose -f compose.dev.yaml up --watch`，无需每次加 `--build`。保持它运行，保存 `web/`、`admin/` 中的 React、CSS 等源码后，Compose 会同步文件，Vite 会热更新；部分 SSR 路由修改会刷新页面。保存 `api/` 中的 Go 源码后，Compose 会同步文件并自动重新编译、重启 API。**改完业务代码不用再执行 Compose 命令。**浏览器仍访问上面的三个 `https://localhost` 地址，登录与 Cookie 正常工作。Watch 停止后容器可能继续运行，但源码不再自动同步；重新运行 `up --watch` 即可。
 
 新增前台路由时，先创建路由组件文件，再修改 `web/app/routes.ts`。如果 Vite 恰好在新文件同步前重载配置并显示“文件不存在”，运行 `docker compose -f compose.dev.yaml restart web` 即可恢复，无需重建镜像。构建检查请使用下方宿主机 `corepack pnpm build` 命令；不要在正在运行 `pnpm dev` 的前台容器内同时构建，以免构建产物干扰开发服务器的样式缓存。
 

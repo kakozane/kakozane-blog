@@ -5,13 +5,16 @@ import (
 	"database/sql"
 	"flag"
 	"fmt"
-	"github.com/go-sql-driver/mysql"
-	"github.com/kakozane/kakozane-blog/api/internal/config"
 	"net"
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/go-sql-driver/mysql"
+	"github.com/kakozane/kakozane-blog/api/internal/config"
 )
+
+// seed-demo 用于向数据库写入演示内容，便于本地开发和测试。
 
 func main() {
 	apply := flag.Bool("apply", false, "write demo content; default only previews")
