@@ -3,12 +3,14 @@ import { PageContainer, ProLayout } from '@ant-design/pro-components'
 import { Button, Dropdown } from 'antd'
 import { Link, Outlet, useLoaderData, useLocation, useNavigate } from 'react-router'
 
+import { useSessionGuard } from '../hooks/use-session-guard'
 import { useAdminTheme } from '../theme/AdminTheme'
 import type { AdminUser } from '../types/auth'
 import { adminMenu, adminPageName } from '../router/menu'
 import { publicPreviewOrigin } from '../lib/preview-origin'
 
 export default function AdminLayout() {
+  useSessionGuard()
   const { dark, toggle } = useAdminTheme()
   const user = useLoaderData() as AdminUser
   const location = useLocation()

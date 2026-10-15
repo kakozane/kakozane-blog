@@ -462,3 +462,11 @@ cd api
 BLOG_TEST_REDIS=127.0.0.1:16389 go test ./internal/service -run 'Test(NormalizeRegistrationEmail|RegistrationEmailRedis)' -count=1
 BLOG_TEST_CONFIG=/path/to/test-config.yaml BLOG_TEST_REDIS=127.0.0.1:16389 go test ./internal/service -run TestVerifiedRegistration -count=1
 ```
+
+### 同账号顶号规则
+
+- 前台、后台各保留一个有效会话，互不顶掉。同一账号在同一端再次登录（包括 SSO），会原子替换旧会话；同一浏览器共享 Cookie 的多个标签页属于同一个会话。
+- 新登录成功后，旧会话的后续受保护请求返回 401。旧设备退出不会注销新设备，旧会话签发但尚未兑换的 SSO 凭证也不能再使用。
+- 已登录页面每 15 秒检查一次会话，切回窗口时也检查；网络错误不会被当成顶号。前台提示重新登录，后台返回登录页（编辑器原有的未保存确认仍保留）。
+- 会话有效期仍为 12 小时。首次部署此规则后，无账号索引的旧会话需重新登录，不需要数据库迁移。
+- Redis 集成测试：在独立测试 Redis 上执行 `cd api && BLOG_TEST_REDIS=127.0.0.1:16389 go test ./internal/repository`。

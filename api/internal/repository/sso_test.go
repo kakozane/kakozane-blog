@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -31,7 +32,8 @@ func TestSSOTicketLifecycle(t *testing.T) {
 	const origin = "https://admin.dev.retniw.cc"
 	key := ssoTicketKey(ticket, "admin", origin)
 	t.Cleanup(func() { client.Del(ctx, key, sessionKey("front", token)) })
-	user := User{ID: 123, SessionVersion: 4}
+	user := User{ID: time.Now().UnixNano(), SessionVersion: 4}
+	t.Cleanup(func() { client.Del(ctx, activeSessionPrefix("front")+fmt.Sprint(user.ID)) })
 	if err := repo.SaveSession(ctx, "front", token, user.ID, user.SessionVersion); err != nil {
 		t.Fatal(err)
 	}

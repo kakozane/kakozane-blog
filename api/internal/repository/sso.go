@@ -35,8 +35,8 @@ func (r *AuthRepository) ConsumeSSOTicket(ctx context.Context, ticket, targetSco
 	if err := json.Unmarshal(data, &value); err != nil {
 		return SSOTicket{}, err
 	}
-	// 来源退出或过期后，尚未使用的凭证也不能继续登录。
-	session, err := r.redis.Get(ctx, value.SourceKey).Result()
+	// 来源退出、过期或被顶号后，尚未使用的凭证也不能继续登录。
+	session, err := r.sessionValue(ctx, value.SourceKey)
 	if err != nil {
 		return SSOTicket{}, err
 	}

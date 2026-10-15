@@ -12,6 +12,7 @@ import {
 
 import type { Route } from "./+types/root";
 import "./styles/tailwind.css";
+import { SessionGuard } from "./modules/auth/components/session-guard";
 import { AuthDialog } from "./modules/auth/components/auth-dialog";
 import { PageMotion } from "./shared/components/page-motion";
 import { frontUser } from "./modules/auth/api/auth.server";
@@ -62,7 +63,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
-  return <><Outlet /><AuthDialog /><PageMotion /></>;
+  return <><Outlet /><SessionGuard /><AuthDialog /><PageMotion /></>;
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
