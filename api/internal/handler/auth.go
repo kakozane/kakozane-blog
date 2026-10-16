@@ -37,7 +37,7 @@ func NewAuthHandler(authService *service.AuthService, sites []config.SSOSite) *A
 // @Tags 前台认证
 // @Produce json
 // @Accept json
-// @Param body body loginRequest true "账号密码"
+// @Param body body PasswordEnvelope true "加密后的账号密码"
 // @Success 200 {object} map[string]interface{} "user 信息；仅后台包含 role、permissions"
 // @Failure 401,403,426,429,503 {object} map[string]string
 // @Router /auth/login [post]
@@ -49,7 +49,7 @@ func (h *AuthHandler) FrontLogin(c *gin.Context) { h.login(c, service.ScopeFront
 // @Tags 后台认证
 // @Produce json
 // @Accept json
-// @Param body body loginRequest true "账号密码"
+// @Param body body PasswordEnvelope true "加密后的账号密码"
 // @Success 200 {object} map[string]interface{} "user 信息；仅后台包含 role、permissions"
 // @Failure 401,403,426,429,503 {object} map[string]string
 // @Router /admin/auth/login [post]

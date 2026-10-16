@@ -1,3 +1,4 @@
+const { encryptedBody } = require('./password-envelope.cjs')
 // 本地集成检查：创建临时文章、读者和评论，finally 清理。不要指向生产环境。
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE_PATH || 'playwright')
 const fs = require('node:fs'), path = require('node:path'), assert = require('node:assert/strict'), crypto = require('node:crypto')
@@ -8,6 +9,7 @@ async function main() {
  const admin=await browser.newContext({ignoreHTTPSErrors:true}), reader=await browser.newContext({ignoreHTTPSErrors:true})
  const prefix='workflow'+Date.now();let post, userID, draftVersion=0
  async function api(context,origin,url,method='GET',data,expected=200) {
+  if(method==='POST' && (url.endsWith('/login') || url==='/api/v1/admin/users')) data=await encryptedBody(context.request,origin,url,data)
   const response=await context.request.fetch(origin+url,{method,data,headers:{Origin:origin}})
   assert.equal(response.status(),expected,`${method} ${url}: ${await response.text()}`)
   return expected===204 ? null : response.json()

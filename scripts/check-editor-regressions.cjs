@@ -1,3 +1,4 @@
+const { encryptedBody } = require('./password-envelope.cjs')
 // 开发服务启动后运行；复用已有 Playwright，可通过 PLAYWRIGHT_MODULE_PATH 指定。
 // 上传接口使用模拟响应，不创建文章或媒体记录。
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE_PATH || 'playwright')
@@ -16,7 +17,7 @@ async function check() {
   const browser = await chromium.launch({ channel: 'chrome', headless: true, args: ['--no-proxy-server'] })
   try {
     const context = await browser.newContext({ ignoreHTTPSErrors: true })
-    const login = await context.request.post(`${origin}/api/v1/admin/auth/login`, { data: credentials, headers: { Origin: origin } })
+    const login = await context.request.post(`${origin}/api/v1/admin/auth/login`, { data: await encryptedBody(context.request, origin, '/api/v1/admin/auth/login', credentials), headers: { Origin: origin } })
     assert(login.ok(), '测试账号登录失败')
     const page = await context.newPage()
     await page.goto(`${origin}/posts/new`)

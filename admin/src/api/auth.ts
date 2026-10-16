@@ -1,14 +1,10 @@
+import { encryptedFetch } from "./encrypted-fetch"
 import type { AdminUser, AuthResponse, LoginInput } from '../types/auth'
 
 const endpoint = '/api/v1/admin/auth'
 
 export async function login(input: LoginInput): Promise<AdminUser> {
-  const response = await fetch(`${endpoint}/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'same-origin',
-    body: JSON.stringify(input),
-  })
+  const response = await encryptedFetch(`${endpoint}/login`, input)
   const data = (await response.json()) as AuthResponse
   if (!response.ok) throw new Error(data.error ?? '登录失败，请稍后重试')
   return data.user

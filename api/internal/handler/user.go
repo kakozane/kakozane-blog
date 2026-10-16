@@ -25,7 +25,7 @@ func NewUserHandler(userService *service.UserService) *UserHandler {
 // @Tags 前台认证
 // @Accept json
 // @Produce json
-// @Param input body model.RegistrationInput true "注册信息"
+// @Param input body PasswordEnvelope true "加密后的注册信息"
 // @Success 201 {object} map[string]interface{}
 // @Failure 400 {object} map[string]string
 // @Failure 409 {object} map[string]string
@@ -118,7 +118,7 @@ func (h *UserHandler) ResetPassword(c *gin.Context) {
 		return
 	}
 	c.Header("Cache-Control", "no-store")
-	c.JSON(http.StatusOK, gin.H{"password": secret})
+	encryptedPasswordResponse(c, secret)
 }
 
 func (h *UserHandler) Delete(c *gin.Context) {

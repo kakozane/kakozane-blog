@@ -30,12 +30,12 @@ const docTemplate = `{
                 "summary": "后台认证 - Login",
                 "parameters": [
                     {
-                        "description": "账号密码",
+                        "description": "加密后的账号密码",
                         "name": "body",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/handler.loginRequest"
+                            "$ref": "#/definitions/handler.PasswordEnvelope"
                         }
                     }
                 ],
@@ -1174,6 +1174,27 @@ const docTemplate = `{
                 }
             }
         },
+        "/auth/encryption-key": {
+            "get": {
+                "description": "SPKI Base64 公钥；RSA-OAEP SHA-256 包装 AES-256-GCM 密钥。详见 README 密码请求加密。",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "前台认证"
+                ],
+                "summary": "获取密码请求加密公钥",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
         "/auth/login": {
             "post": {
                 "description": "Cookie 由浏览器自动管理；写操作必须通过同源 HTTPS 发起。",
@@ -1189,12 +1210,12 @@ const docTemplate = `{
                 "summary": "前台认证 - Login",
                 "parameters": [
                     {
-                        "description": "账号密码",
+                        "description": "加密后的账号密码",
                         "name": "body",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/handler.loginRequest"
+                            "$ref": "#/definitions/handler.PasswordEnvelope"
                         }
                     }
                 ],
@@ -1397,12 +1418,12 @@ const docTemplate = `{
                 "summary": "验证邮箱并注册读者账号",
                 "parameters": [
                     {
-                        "description": "注册信息",
+                        "description": "加密后的注册信息",
                         "name": "input",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.RegistrationInput"
+                            "$ref": "#/definitions/handler.PasswordEnvelope"
                         }
                     }
                 ],
@@ -2128,13 +2149,29 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "handler.loginRequest": {
+        "handler.PasswordEnvelope": {
             "type": "object",
+            "required": [
+                "data",
+                "iv",
+                "keyId",
+                "version",
+                "wrappedKey"
+            ],
             "properties": {
-                "password": {
+                "data": {
                     "type": "string"
                 },
-                "username": {
+                "iv": {
+                    "type": "string"
+                },
+                "keyId": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "integer"
+                },
+                "wrappedKey": {
                     "type": "string"
                 }
             }
@@ -2250,29 +2287,6 @@ const docTemplate = `{
                 },
                 "version": {
                     "type": "integer"
-                }
-            }
-        },
-        "model.RegistrationInput": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "type": "string"
-                },
-                "displayName": {
-                    "type": "string"
-                },
-                "email": {
-                    "type": "string"
-                },
-                "password": {
-                    "type": "string"
-                },
-                "role": {
-                    "type": "string"
-                },
-                "username": {
-                    "type": "string"
                 }
             }
         },

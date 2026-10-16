@@ -67,6 +67,11 @@ func run() error {
 	redisClient := redis.NewClient(&redis.Options{Addr: cfg.Redis.Address, Password: cfg.Redis.Password})
 	defer redisClient.Close()
 
+	passwordTransport, err := handler.NewPasswordTransport(redisClient)
+	if err != nil {
+		return fmt.Errorf("initialize password encryption: %w", err)
+	}
+
 	// 在入口处组装依赖，业务层不负责创建数据库连接。
 	healthService := service.NewHealthService(repository.NewHealthRepository(db, redisClient))
 	authService := service.NewAuthService(repository.NewAuthRepository(db, redisClient))
@@ -100,7 +105,7 @@ func run() error {
 
 	server := &http.Server{
 		Addr:              net.JoinHostPort("", strconv.Itoa(cfg.Server.Port)),
-		Handler:           router.New(cfg.Server.SwaggerEnabled, handler.NewHealthHandler(healthService), handler.NewAuthHandler(authService, cfg.Auth.SSOSites), handler.NewContentHandler(contentService), handler.NewUserHandler(userService), handler.NewCommentHandler(commentService), handler.NewLikeHandler(likeService, authService), handler.NewEventHandler(eventService), handler.NewFriendHandler(friendService), handler.NewProjectHandler(projectService), handler.NewPageHandler(pageService), handler.NewSayHandler(sayService), handler.NewMediaHandler(mediaService), handler.NewSiteHandler(siteService), handler.NewFeedHandler(feedService, sayService)),
+		Handler:           router.New(cfg.Server.SwaggerEnabled, handler.NewHealthHandler(healthService), handler.NewAuthHandler(authService, cfg.Auth.SSOSites), handler.NewContentHandler(contentService), handler.NewUserHandler(userService), handler.NewCommentHandler(commentService), handler.NewLikeHandler(likeService, authService), handler.NewEventHandler(eventService), handler.NewFriendHandler(friendService), handler.NewProjectHandler(projectService), handler.NewPageHandler(pageService), handler.NewSayHandler(sayService), handler.NewMediaHandler(mediaService), handler.NewSiteHandler(siteService), handler.NewFeedHandler(feedService, sayService), passwordTransport),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 	shutdownCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)

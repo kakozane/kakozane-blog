@@ -470,3 +470,26 @@ BLOG_TEST_CONFIG=/path/to/test-config.yaml BLOG_TEST_REDIS=127.0.0.1:16389 go te
 - 已登录页面每 15 秒检查一次会话，切回窗口时也检查；网络错误不会被当成顶号。前台提示重新登录，后台返回登录页（编辑器原有的未保存确认仍保留）。
 - 会话有效期仍为 12 小时。首次部署此规则后，无账号索引的旧会话需重新登录，不需要数据库迁移。
 - Redis 集成测试：在独立测试 Redis 上执行 `cd api && BLOG_TEST_REDIS=127.0.0.1:16389 go test ./internal/repository`。
+
+### 密码请求加密
+
+前台/后台登录、注册、修改密码、后台创建用户及重置密码，统一使用应用层密文协议。浏览器 Network 的 Payload 不包含原始密码；后台重置密码的 Response 也返回密文，由浏览器解密后展示。HTTPS、HttpOnly Cookie、Argon2id 密码存储和登录限流继续保留。
+
+协议版本为 1，使用浏览器 Web Crypto 与 Go 标准库，不增加加密依赖：
+
+1. 提交时读取同源 `GET /api/v1/auth/encryption-key`，获得 `keyId`、Base64 SPKI 公钥及服务器时间 `issuedAt`，响应禁止缓存。
+2. 每次请求生成新的 32 字节 AES 密钥、12 字节随机 IV；用 AES-256-GCM（128 位 tag）加密 UTF-8 JSON：`{issuedAt, data: 原业务请求对象}`。AAD 为 `blog-password:v1\nPOST\n实际请求路径`。
+3. 用 RSA-2048 OAEP / SHA-256（空 label）加密 AES 密钥，再发送 JSON：`{version:1, keyId, wrappedKey, iv, data}`。三个二进制字段使用标准 Base64；`data` 包含末尾的 GCM tag。
+4. 后端校验来源、版本、路径、密文完整性和两分钟有效期，并用 Redis 原子去重，之后执行原有业务。明文格式不再兼容；密文重放返回 400。密钥已更新返回 409，用户重新提交即可；不会自动回退明文。
+5. 重置密码的成功响应为 `{version:1, iv, data}`：使用本次请求的 AES 密钥、新随机 IV，AAD 为 `response\n` 加请求 AAD。
+
+密钥在 API 启动时自动生成，私钥仅留在进程内存，当前单 API 实例无需额外配置文件或 GitHub Secret。每次提交重新获取公钥；重启不影响已有 Session 和数据库密码。**若未来改为多 API 实例，需要统一管理密钥或保证获取公钥和提交请求到同一实例。**
+
+发布时需一起更新 API、web、admin；旧前端明文请求会被拒绝，已打开的旧页面需刷新。Swagger 的密码接口请求模型已改为密文信封，不能再直接填写明文账号密码；可用现有前端操作，或参考 `scripts/password-envelope.cjs` 生成请求。现有联调脚本也已适配协议。
+
+验证：
+
+- `cd api && BLOG_TEST_REDIS=127.0.0.1:16389 go test ./...`：独立测试 Redis，检查篡改、过期、路径绑定、重复及并发重放、明文拒绝、响应解密。
+- 开发栈运行时，设置 `BLOG_TEST_ADMIN_USER`、`BLOG_TEST_ADMIN_PASSWORD` 和已安装的 `PLAYWRIGHT_MODULE_PATH`，运行 `node scripts/check-password-transport.cjs`：创建临时用户，检查前后台表单、Network 密文及注册验证码错误路径，结束后删除临时用户，不发送邮件。
+
+这层加密用于隐藏 Network 中的原始密码，不能阻止浏览器所有者通过输入框或 JavaScript 调试读取输入；HTTPS 仍是必要的传输保护。

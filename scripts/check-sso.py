@@ -10,6 +10,7 @@ import os
 from pathlib import Path
 import secrets
 import ssl
+import subprocess
 import urllib.error
 import urllib.request
 
@@ -32,6 +33,13 @@ def request(browser, origin, path, method="GET", body=None, source=None, expecte
         headers.update({"Access-Control-Request-Method": "POST", "Access-Control-Request-Headers": "content-type"})
     data = None
     if body is not None:
+        if method == "POST" and (path.endswith(("/login", "/register", "/change-password", "/reset-password")) or path == "/api/v1/admin/users"):
+            metadata, _ = request(browser, origin, "/api/v1/auth/encryption-key")
+            body = json.loads(subprocess.run(
+                ["node", str(ROOT / "scripts/password-envelope.cjs")],
+                input=json.dumps({"metadata": metadata, "path": path, "data": body}),
+                text=True, capture_output=True, check=True,
+            ).stdout)
         data = json.dumps(body).encode()
         headers["Content-Type"] = "application/json"
     req = urllib.request.Request(origin + path, data=data, headers=headers, method=method)
