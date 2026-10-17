@@ -1,3 +1,16 @@
+# Brotli 由统一代理处理，前台/后台无需引入浏览器解压代码。
+ARG CADDY_VERSION=2.11.7
+FROM caddy:${CADDY_VERSION}-builder AS caddy-build
+RUN apk add --no-cache build-base brotli-dev pkgconf
+# 固定模块提交，避免每次构建隐式更新依赖。
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=1 xcaddy build --with github.com/dunglas/caddy-cbrotli@69aee61a885ad7915296a2ec28f468d1d1076c44
+
+FROM caddy:${CADDY_VERSION}-alpine AS caddy-runtime
+RUN apk add --no-cache brotli-libs
+COPY --from=caddy-build /usr/bin/caddy /usr/bin/caddy
+
 # 管理后台只需在构建阶段使用 Node 和 pnpm。
 FROM node:24-alpine AS admin-build
 RUN corepack enable
@@ -8,6 +21,6 @@ COPY admin/ ./
 RUN pnpm build
 
 # 运行阶段用 Caddy 提供后台静态文件及反向代理。
-FROM caddy:2-alpine
+FROM caddy-runtime AS production
 COPY Caddyfile /etc/caddy/Caddyfile
 COPY --from=admin-build /src/admin/dist /srv/admin

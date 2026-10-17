@@ -91,7 +91,10 @@ services:
           path: ./admin/pnpm-workspace.yaml
 
   proxy:
-    image: caddy:2-alpine
+    build:
+      context: .
+      dockerfile: Dockerfile.proxy
+      target: caddy-runtime
     volumes:
       - ./Caddyfile.dev:/etc/caddy/Caddyfile:ro
       - caddy_data:/data

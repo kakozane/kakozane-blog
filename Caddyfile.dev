@@ -1,9 +1,20 @@
+# 优先 Brotli，兼容 zstd/gzip；跳过 SSE，避免压缩缓冲推送消息。
+(compression) {
+	@compress not path /api/v1/events /@vite/* /@react-refresh /@id/* /@fs/*
+	encode @compress {
+		br 4
+		zstd
+		gzip
+	}
+}
+
 # 本地开发配置，由 compose.dev.yaml 挂载到 /etc/caddy/Caddyfile。
 # 与打包模式不同，前台和后台页面都转发到开发服务，支持源码修改后的热更新。
 # localhost 使用下列显式端口；开发域名未写端口，HTTPS 默认使用 443。
 # 开发域名需先通过本机 hosts 指向本机，相关端口由 compose.dev.yaml 映射。
 # api、web、admin 是 Compose 服务名，并不是公网域名。
 localhost:6324, api.dev.retniw.cc {
+	import compression
 	# 使用 Caddy 自建的本地 CA 签发 HTTPS 证书，不是公网可信证书。
 	# 浏览器需要信任该 CA 的根证书；证书状态由 Compose 的 /data 卷保存。
 	tls internal
@@ -12,6 +23,7 @@ localhost:6324, api.dev.retniw.cc {
 }
 
 localhost:6325, dev.retniw.cc {
+	import compression
 	# 使用 Caddy 自建的本地 CA 签发 HTTPS 证书，不是公网可信证书。
 	# 浏览器需要信任该 CA 的根证书；证书状态由 Compose 的 /data 卷保存。
 	tls internal
@@ -42,11 +54,18 @@ localhost:6325, dev.retniw.cc {
 	# 不带匹配条件的兜底分支：处理未被其他 handle 分支接管的请求。
 	handle {
 		# 将页面与资源请求交给前台服务；api/web 服务名由 Docker 网络解析。
-		reverse_proxy web:6325
+		reverse_proxy web:6325 {
+			# 由入口统一协商编码，避免 Node 先压缩导致无法选择 Brotli。
+			header_up -Accept-Encoding
+			transport http {
+				compression off
+			}
+		}
 	}
 }
 
 localhost:6326, admin.dev.retniw.cc {
+	import compression
 	# 使用 Caddy 自建的本地 CA 签发 HTTPS 证书，不是公网可信证书。
 	# 浏览器需要信任该 CA 的根证书；证书状态由 Compose 的 /data 卷保存。
 	tls internal

@@ -10,6 +10,16 @@
 	auto_https off
 }
 
+# 优先 Brotli，兼容 zstd/gzip；跳过 SSE，避免压缩缓冲推送消息。
+(compression) {
+	@compress not path /api/v1/events /@vite/* /@react-refresh /@id/* /@fs/*
+	encode @compress {
+		br 4
+		zstd
+		gzip
+	}
+}
+
 # 定义名为 api 的可复用配置片段，本身不创建监听站点。
 # 前台和后台通过 import api 复用接口代理与上传文件访问规则。
 (api) {
@@ -40,7 +50,7 @@
 # 前台内部 HTTP 入口，域名及 HTTPS 校验已由外层 Nginx 完成。
 :6325 {
 	# 根据浏览器支持情况压缩可压缩响应，减少 HTML、CSS、JS 等传输体积。
-	encode zstd gzip
+	import compression
 	# 展开上方 api 片段，使当前入口也具备 /api/* 和 /uploads/* 路由。
 	import api
 	# 命名匹配器：这些站点地图、订阅源和爬虫规则由 Go 后端生成。
@@ -55,6 +65,11 @@
 	handle {
 		# 将页面请求转发给前台 SSR 服务，由它生成 HTML 并提供相关资源。
 		reverse_proxy web:6325 {
+			# 由入口统一协商编码，避免 Node 先压缩导致无法选择 Brotli。
+			header_up -Accept-Encoding
+			transport http {
+				compression off
+			}
 			# 保留外层 Nginx 传入的原始协议（通常为 https），避免应用误判成内部 HTTP。
 			# 仅在可信 Nginx 已覆盖此请求头、容器入口未直接暴露公网的前提下使用。
 			header_up X-Forwarded-Proto {http.request.header.X-Forwarded-Proto}
@@ -65,7 +80,7 @@
 # 后台内部 HTTP 入口：接口交给 Gin，页面由 Caddy 返回静态文件。
 :6326 {
 	# 根据浏览器支持情况压缩可压缩响应，减少 HTML、CSS、JS 等传输体积。
-	encode zstd gzip
+	import compression
 	# 展开上方 api 片段，使当前入口也具备 /api/* 和 /uploads/* 路由。
 	import api
 	# 不带匹配条件的兜底分支：处理未被其他 handle 分支接管的请求。

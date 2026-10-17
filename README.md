@@ -99,6 +99,16 @@ cd ../admin && corepack pnpm lint && corepack pnpm build
 cd .. && docker compose config -q && docker compose -f compose.prod.yaml config -q
 ```
 
+### Brotli 响应压缩
+
+`Dockerfile.proxy` 使用固定版本的 Caddy，并编译 `caddy-cbrotli` 模块。本地开发、打包运行和生产配置均由代理统一压缩前台、后台及普通 API 响应。浏览器通过 `Accept-Encoding` 协商编码；同等优先级下使用 `br`，再回退到 `zstd`、`gzip`。前端无需增加解压代码，也不需要手动设置这个请求头。
+
+- 动态 Brotli 使用质量等级 4；默认只压缩超过 512 字节且类型适合压缩的响应，图片等已压缩资源通常保持原样。
+- `/api/v1/events` 的 SSE 和 Vite 内部热更新路径不压缩。SSR 上游不先做 gzip，交给 Caddy 统一协商。
+- 首次启用必须重新构建代理镜像，旧的官方 Caddy 镜像不认识 `br`。开发环境运行 `docker compose -f compose.dev.yaml up -d --no-deps --build proxy`；生产工作流选择 `proxy` 构建部署即可。
+- 宝塔 Nginx 保留请求中的 `Accept-Encoding`，并透传上游的 `Content-Encoding`、`Vary`；不要配置 `proxy_set_header Accept-Encoding ""`。Nginx 无需额外安装 Brotli 模块。
+- 验证时在浏览器 Network 查看 JS/CSS/页面的响应头 `Content-Encoding: br`。小响应没有该响应头属于正常现象；命令行可运行 `curl -sS -D - -o /dev/null -H 'Accept-Encoding: br' https://retniw.cc/`。
+
 ## 接口与登录
 
 前后台共用 `users` 表，但登录接口、会话和 Cookie 独立。读者只可登录前台，管理员可登录两端。前台个人信息只返回账号与昵称，后台管理员信息才包含身份和权限。密码经 HTTPS 传输，数据库只存 Argon2id 哈希；Redis 存随机会话令牌的 SHA-256 摘要。Cookie 使用 `Secure`、`HttpOnly`、`SameSite=Strict`。修改密码、停用用户或改变身份会令旧会话失效；项目不使用 JWT 签名密钥。
