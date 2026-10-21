@@ -19,7 +19,9 @@ localhost:6324, api.dev.retniw.cc {
 	# 浏览器需要信任该 CA 的根证书；证书状态由 Compose 的 /data 卷保存。
 	tls internal
 	# 保留请求路径并转发到 Go Gin 后端的内部端口。
-	reverse_proxy api:6324
+	reverse_proxy api:6324 {
+		header_up X-Real-IP {remote_host}
+	}
 }
 
 localhost:6325, dev.retniw.cc {
@@ -33,13 +35,17 @@ localhost:6325, dev.retniw.cc {
 	# 匹配上面的 @discovery 路径，保留原始请求路径转发。
 	handle @discovery {
 		# 保留请求路径并转发到 Go Gin 后端的内部端口。
-		reverse_proxy api:6324
+		reverse_proxy api:6324 {
+			header_up X-Real-IP {remote_host}
+		}
 	}
 	# 匹配 /api/ 下的接口，包括 /api/v1/*；handle 不删除 /api 前缀。
 	# 浏览器可直接请求当前站点的 /api/v1/...，无需跨域访问另一个接口域名。
 	handle /api/* {
 		# 保留请求路径并转发到 Go Gin 后端的内部端口。
-		reverse_proxy api:6324
+		reverse_proxy api:6324 {
+			header_up X-Real-IP {remote_host}
+		}
 	}
 	# 上传文件入口：handle_path 会剥离 /uploads/ 前缀。
 	# 例如 /uploads/example.png 对应 /srv/uploads/example.png；该目录来自上传文件卷。
@@ -73,7 +79,9 @@ localhost:6326, admin.dev.retniw.cc {
 	# 浏览器可直接请求当前站点的 /api/v1/...，无需跨域访问另一个接口域名。
 	handle /api/* {
 		# 保留请求路径并转发到 Go Gin 后端的内部端口。
-		reverse_proxy api:6324
+		reverse_proxy api:6324 {
+			header_up X-Real-IP {remote_host}
+		}
 	}
 	# 上传文件入口：handle_path 会剥离 /uploads/ 前缀。
 	# 例如 /uploads/example.png 对应 /srv/uploads/example.png；该目录来自上传文件卷。

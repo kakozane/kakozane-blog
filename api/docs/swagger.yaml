@@ -24,6 +24,89 @@ definitions:
       email:
         type: string
     type: object
+  model.MonitorComponent:
+    properties:
+      message:
+        type: string
+      metrics:
+        items:
+          $ref: '#/definitions/model.MonitorMetric'
+        type: array
+      status:
+        type: string
+    type: object
+  model.MonitorMetric:
+    properties:
+      key:
+        type: string
+      label:
+        type: string
+      unit:
+        type: string
+      value:
+        type: number
+    type: object
+  model.MonitorPoint:
+    properties:
+      at:
+        type: string
+      cpu:
+        type: number
+      errors:
+        type: integer
+      memory:
+        type: number
+      requests:
+        type: integer
+    type: object
+  model.MonitorRoute:
+    properties:
+      averageMs:
+        type: number
+      clientErrors:
+        type: integer
+      errors:
+        type: integer
+      maxMs:
+        type: number
+      method:
+        type: string
+      requests:
+        type: integer
+      route:
+        type: string
+      slow:
+        type: integer
+    type: object
+  model.MonitorSnapshot:
+    properties:
+      cleanupFailed:
+        type: boolean
+      droppedLogs:
+        type: integer
+      failedLogs:
+        type: integer
+      history:
+        items:
+          $ref: '#/definitions/model.MonitorPoint'
+        type: array
+      mysql:
+        $ref: '#/definitions/model.MonitorComponent'
+      queueDepth:
+        type: integer
+      redis:
+        $ref: '#/definitions/model.MonitorComponent'
+      routes:
+        items:
+          $ref: '#/definitions/model.MonitorRoute'
+        type: array
+      sampledAt:
+        type: string
+      server:
+        $ref: '#/definitions/model.MonitorComponent'
+      startedAt:
+        type: string
+    type: object
   model.Post:
     properties:
       authorId:
@@ -439,6 +522,89 @@ paths:
       summary: SaveDraft（需后台登录）
       tags:
       - 草稿与版本
+  /admin/monitor/logs:
+    get:
+      parameters:
+      - description: login / operation / request
+        in: query
+        name: kind
+        required: true
+        type: string
+      - description: front / admin
+        in: query
+        name: scope
+        type: string
+      - description: success / failure
+        in: query
+        name: result
+        type: string
+      - description: 精确匹配账号或 IP
+        in: query
+        name: q
+        type: string
+      - description: 起始时间 RFC3339
+        in: query
+        name: from
+        type: string
+      - description: 结束时间 RFC3339，不含边界
+        in: query
+        name: to
+        type: string
+      - description: 页码，1–500
+        in: query
+        name: page
+        type: integer
+      - description: 每页条数，1–100
+        in: query
+        name: pageSize
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Service Unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: 分页筛选登录、操作、异常及慢请求日志
+      tags:
+      - 系统监控
+  /admin/monitor/overview:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.MonitorSnapshot'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: 管理员查看系统、MySQL、Redis 和接口运行指标
+      tags:
+      - 系统监控
   /admin/posts:
     get:
       parameters:

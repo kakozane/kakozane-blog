@@ -112,6 +112,7 @@ func (h *AuthHandler) RequireAdmin(c *gin.Context) {
 	}
 	c.Set("adminUserID", user.ID)
 	c.Set("userID", user.ID)
+	c.Set("auditUsername", user.Username)
 	c.Next()
 }
 
@@ -131,6 +132,7 @@ func (h *AuthHandler) RequireFront(c *gin.Context) {
 		return
 	}
 	c.Set("userID", user.ID)
+	c.Set("auditUsername", user.Username)
 	c.Next()
 }
 
@@ -149,6 +151,7 @@ func (h *AuthHandler) login(c *gin.Context, scope string) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "请求格式错误"})
 		return
 	}
+	c.Set("auditUsername", strings.ToLower(strings.TrimSpace(input.Username)))
 	user, token, err := h.service.Login(c.Request.Context(), input.Username, input.Password, scope)
 	if errors.Is(err, service.ErrRateLimited) {
 		c.JSON(http.StatusTooManyRequests, gin.H{"error": "尝试次数过多，请 15 分钟后再试"})
@@ -163,6 +166,8 @@ func (h *AuthHandler) login(c *gin.Context, scope string) {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "登录暂不可用"})
 		return
 	}
+	c.Set("userID", user.ID)
+	c.Set("auditUsername", user.Username)
 	h.setCookie(c, scope, token, 0)
 	c.JSON(http.StatusOK, gin.H{"user": profile(user, scope)})
 }
@@ -186,6 +191,10 @@ func (h *AuthHandler) logout(c *gin.Context, scope string) {
 	c.Header("Cache-Control", "no-store")
 	if !secureSameOrigin(c) {
 		return
+	}
+	if user, err := h.service.CurrentUser(c.Request.Context(), scope, cookieValue(c, scope)); err == nil {
+		c.Set("userID", user.ID)
+		c.Set("auditUsername", user.Username)
 	}
 	if err := h.service.Logout(c.Request.Context(), scope, cookieValue(c, scope)); err != nil {
 		slog.Error("logout failed", "error", err)

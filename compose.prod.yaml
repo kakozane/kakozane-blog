@@ -1,6 +1,8 @@
 # 线上独立编排文件；MySQL 和 Redis 由已有服务提供，不会重复创建。
 services:
   api:
+    # 等待在途请求结束并冲刷审计日志。
+    stop_grace_period: 20s
     build: ./api
     # 在 api/config.yaml 中填写生产环境数据库的私网地址和独立账号。
     volumes:

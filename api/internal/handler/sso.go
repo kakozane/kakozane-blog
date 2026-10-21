@@ -138,6 +138,8 @@ func (h *AuthHandler) ssoExchange(c *gin.Context, scope string) {
 		ssoError(c, err)
 		return
 	}
+	c.Set("userID", user.ID)
+	c.Set("auditUsername", user.Username)
 	h.setCookie(c, scope, token, 0)
 	c.JSON(http.StatusOK, gin.H{"user": profile(user, scope)})
 }

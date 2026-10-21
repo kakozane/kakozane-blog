@@ -1,6 +1,8 @@
 # 只编排博客应用；MySQL 和 Redis 复用本机已经运行的容器。
 services:
   api:
+    # 等待在途请求结束并冲刷审计日志。
+    stop_grace_period: 20s
     build: ./api
     # 只读挂载本机 YAML；密码不会进入镜像或 Compose 文件。
     volumes:

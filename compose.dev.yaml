@@ -2,6 +2,8 @@
 # MySQL、Redis 继续复用已有容器；不要与 compose.yaml 同时启动。
 services:
   api:
+    # 等待在途请求结束并冲刷审计日志。
+    stop_grace_period: 20s
     build:
       context: ./api
       target: build

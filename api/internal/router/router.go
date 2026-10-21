@@ -6,8 +6,9 @@ import (
 	"github.com/kakozane/kakozane-blog/api/internal/service"
 )
 
-func New(swaggerEnabled bool, healthHandler *handler.HealthHandler, authHandler *handler.AuthHandler, contentHandler *handler.ContentHandler, userHandler *handler.UserHandler, commentHandler *handler.CommentHandler, likeHandler *handler.LikeHandler, eventHandler *handler.EventHandler, friendHandler *handler.FriendHandler, projectHandler *handler.ProjectHandler, pageHandler *handler.PageHandler, sayHandler *handler.SayHandler, mediaHandler *handler.MediaHandler, siteHandler *handler.SiteHandler, feedHandler *handler.FeedHandler, passwordTransport *handler.PasswordTransport) *gin.Engine {
-	r := gin.Default()
+func New(swaggerEnabled bool, healthHandler *handler.HealthHandler, authHandler *handler.AuthHandler, contentHandler *handler.ContentHandler, userHandler *handler.UserHandler, commentHandler *handler.CommentHandler, likeHandler *handler.LikeHandler, eventHandler *handler.EventHandler, friendHandler *handler.FriendHandler, projectHandler *handler.ProjectHandler, pageHandler *handler.PageHandler, sayHandler *handler.SayHandler, mediaHandler *handler.MediaHandler, siteHandler *handler.SiteHandler, feedHandler *handler.FeedHandler, passwordTransport *handler.PasswordTransport, monitor *handler.MonitorHandler) *gin.Engine {
+	r := gin.New()
+	r.Use(gin.Logger(), monitor.Middleware, gin.Recovery())
 	registerSwagger(r, swaggerEnabled || gin.Mode() != gin.ReleaseMode)
 	r.GET("/sitemap.xml", feedHandler.Sitemap)
 	r.GET("/feed.xml", feedHandler.RSS)
@@ -89,6 +90,8 @@ func New(swaggerEnabled bool, healthHandler *handler.HealthHandler, authHandler 
 	adminAuth.GET("/me", authHandler.AdminMe)
 	adminAuth.POST("/logout", authHandler.AdminLogout)
 	admin := api.Group("/admin", authHandler.RequireAdmin)
+	admin.GET("/monitor/overview", monitor.Snapshot)
+	admin.GET("/monitor/logs", monitor.Logs)
 	admin.GET("/drafts/:key", contentHandler.Draft)
 	admin.PUT("/drafts/:key", contentHandler.SaveDraft)
 	admin.DELETE("/drafts/:key", contentHandler.DeleteDraft)

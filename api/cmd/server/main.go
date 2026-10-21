@@ -64,7 +64,7 @@ func run() error {
 	}
 	defer db.Close()
 
-	redisClient := redis.NewClient(&redis.Options{Addr: cfg.Redis.Address, Password: cfg.Redis.Password})
+	redisClient := redis.NewClient(&redis.Options{Addr: cfg.Redis.Address, Password: cfg.Redis.Password, ContextTimeoutEnabled: true})
 	defer redisClient.Close()
 
 	passwordTransport, err := handler.NewPasswordTransport(redisClient)
@@ -103,23 +103,33 @@ func run() error {
 		return fmt.Errorf("apply migrations: %w", err)
 	}
 
+	monitorService := service.NewMonitorService(repository.NewMonitorRepository(db, redisClient), cfg.Media.Directory)
+	monitorCtx, stopMonitor := context.WithCancel(context.Background())
+	monitorDone := make(chan struct{})
+	go func() { defer close(monitorDone); monitorService.Run(monitorCtx) }()
+	defer func() { stopMonitor(); <-monitorDone }()
+
 	server := &http.Server{
 		Addr:              net.JoinHostPort("", strconv.Itoa(cfg.Server.Port)),
-		Handler:           router.New(cfg.Server.SwaggerEnabled, handler.NewHealthHandler(healthService), handler.NewAuthHandler(authService, cfg.Auth.SSOSites), handler.NewContentHandler(contentService), handler.NewUserHandler(userService), handler.NewCommentHandler(commentService), handler.NewLikeHandler(likeService, authService), handler.NewEventHandler(eventService), handler.NewFriendHandler(friendService), handler.NewProjectHandler(projectService), handler.NewPageHandler(pageService), handler.NewSayHandler(sayService), handler.NewMediaHandler(mediaService), handler.NewSiteHandler(siteService), handler.NewFeedHandler(feedService, sayService), passwordTransport),
+		Handler:           router.New(cfg.Server.SwaggerEnabled, handler.NewHealthHandler(healthService), handler.NewAuthHandler(authService, cfg.Auth.SSOSites), handler.NewContentHandler(contentService), handler.NewUserHandler(userService), handler.NewCommentHandler(commentService), handler.NewLikeHandler(likeService, authService), handler.NewEventHandler(eventService), handler.NewFriendHandler(friendService), handler.NewProjectHandler(projectService), handler.NewPageHandler(pageService), handler.NewSayHandler(sayService), handler.NewMediaHandler(mediaService), handler.NewSiteHandler(siteService), handler.NewFeedHandler(feedService, sayService), passwordTransport, handler.NewMonitorHandler(monitorService)),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 	shutdownCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	shutdownDone := make(chan struct{})
 	go func() {
+		defer close(shutdownDone)
 		<-shutdownCtx.Done()
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		if err := server.Shutdown(ctx); err != nil {
 			slog.Error("shutdown server", "error", err)
+			_ = server.Close()
 		}
 	}()
 	if err := server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 		return fmt.Errorf("serve: %w", err)
 	}
+	<-shutdownDone
 	return nil
 }

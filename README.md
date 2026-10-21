@@ -503,3 +503,29 @@ BLOG_TEST_CONFIG=/path/to/test-config.yaml BLOG_TEST_REDIS=127.0.0.1:16389 go te
 - 开发栈运行时，设置 `BLOG_TEST_ADMIN_USER`、`BLOG_TEST_ADMIN_PASSWORD` 和已安装的 `PLAYWRIGHT_MODULE_PATH`，运行 `node scripts/check-password-transport.cjs`：创建临时用户，检查前后台表单、Network 密文及注册验证码错误路径，结束后删除临时用户，不发送邮件。
 
 这层加密用于隐藏 Network 中的原始密码，不能阻止浏览器所有者通过输入框或 JavaScript 调试读取输入；HTTPS 仍是必要的传输保护。
+
+### 后台系统监控
+
+后台「系统监控」提供运行监控、登录日志、操作日志和异常与慢请求四个页面，仅当前有效的管理员会话可以访问。
+
+- **运行监控**：每 15 秒在后台采样一次，页面刷新读取缓存，不会每次点击都扫描数据库。包括 Go 堆/协程/GC、Linux CPU/负载/内存、上传目录所在磁盘空间、MySQL 连通性/连接池/实例状态/博客库大小、Redis 连通性/内存/命中率/持久化状态/当前库键数。依赖异常、资源使用偏高和日志写入异常会在页面提醒。
+- **接口性能**：按路由模板统计请求数、4xx/5xx、平均/最大耗时和 ≥1 秒的慢请求。排除 SSE 长连接、健康检查、监控接口。最近 120 个采样点（约 30 分钟）显示请求速率、5xx、系统 CPU 和内存；累计指标、趋势随 API 重启清空，限当前 API 进程。
+- **登录日志**：记录前后台密码登录、SSO 兑换的成功和失败（包括加密请求被拒绝、限流）。请求在身份解析前失败时账号可能为空。
+- **操作日志**：记录后台 POST/PUT/PATCH/DELETE 等写请求，包括失败操作、操作者、数字对象 ID、来源 IP、客户端、状态码、耗时。日志中的路由是模板，正文、查询参数、密码、Cookie、Session、验证码均不采集。无有效会话的请求无法确定操作者。
+- **异常与慢请求**：保存 HTTP 5xx 和 ≥1 秒请求的元数据，不保存响应内容、原始 SQL、Redis 键名或值。
+
+迁移 `022_monitor_logs.sql` 在正常 bootstrap / API 启动流程中创建日志表，无需手工执行 SQL。MySQL 使用现有应用账号；Redis 需要允许 `PING`、`INFO`、`DBSIZE`。指标权限不足会显示「部分可用」，不需要给应用账号 root 权限。指标含义参见 [Redis INFO](https://redis.io/docs/latest/commands/info/) 和 [MySQL SHOW STATUS](https://dev.mysql.com/doc/refman/8.4/en/show-status.html)。
+
+日志保留 30 天，每分钟最多清理 5000 条过期数据。日志通过容量 512 的内存队列异步写入；队列满、数据库故障或进程被强制终止时可能丢失，页面展示丢弃/失败计数，正常退出最多冲刷 5 秒，Compose 为 API 预留 20 秒退出时间。它用于博客运行排查，不是不可丢失的合规审计系统；没有清空日志、执行 SQL 或 Redis 命令的管理入口。
+
+资源范围：Linux `/proc` 的 CPU/负载/内存为当前内核可见值（Docker Desktop 中是 Linux 虚拟机）；cgroup v2 可用时另外显示当前 cgroup 内存/上限（Docker 中通常为 API 容器）；磁盘为上传目录所在文件系统。macOS 直接运行 Go 时仅展示进程指标。没有挂载 Docker socket，也不需要特权容器。来源 IP 仅从内网/回环代理接受 `X-Real-IP`；生产应保持 API 不对公网开放、入口代理覆盖该头。
+
+本功能没有外部告警推送；如果 API 整体停止，或 MySQL / Redis 故障导致管理员鉴权不可用，页面会显示请求失败，但不能主动发送停机通知。跨实例聚合、长期趋势和离线告警可在需要时接入独立监控服务。
+
+验证（使用独立测试数据库，测试会应用迁移并写入测试记录）：
+
+```bash
+cd api
+BLOG_MONITOR_TEST_DSN='root:测试密码@tcp(127.0.0.1:33316)/monitor_test?parseTime=true' \
+BLOG_TEST_REDIS=127.0.0.1:16389 go test -race ./internal/handler ./internal/service ./internal/repository
+```

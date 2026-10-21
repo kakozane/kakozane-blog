@@ -2,6 +2,8 @@
 name: blog-production
 services:
   api:
+    # 等待在途请求结束并冲刷审计日志。
+    stop_grace_period: 20s
     image: ${ACR_REGISTRY:?}/${ACR_NAMESPACE:?}/blog-api:${API_IMAGE_TAG:?}
     restart: unless-stopped
     environment:

@@ -477,6 +477,132 @@
                 }
             }
         },
+        "/admin/monitor/logs": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "系统监控"
+                ],
+                "summary": "分页筛选登录、操作、异常及慢请求日志",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "login / operation / request",
+                        "name": "kind",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "front / admin",
+                        "name": "scope",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "success / failure",
+                        "name": "result",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "精确匹配账号或 IP",
+                        "name": "q",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "起始时间 RFC3339",
+                        "name": "from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "结束时间 RFC3339，不含边界",
+                        "name": "to",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "页码，1–500",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "每页条数，1–100",
+                        "name": "pageSize",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/monitor/overview": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "系统监控"
+                ],
+                "summary": "管理员查看系统、MySQL、Redis 和接口运行指标",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.MonitorSnapshot"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/admin/posts": {
             "get": {
                 "produces": [
@@ -2176,6 +2302,133 @@
             "type": "object",
             "properties": {
                 "email": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.MonitorComponent": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                },
+                "metrics": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.MonitorMetric"
+                    }
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.MonitorMetric": {
+            "type": "object",
+            "properties": {
+                "key": {
+                    "type": "string"
+                },
+                "label": {
+                    "type": "string"
+                },
+                "unit": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "number"
+                }
+            }
+        },
+        "model.MonitorPoint": {
+            "type": "object",
+            "properties": {
+                "at": {
+                    "type": "string"
+                },
+                "cpu": {
+                    "type": "number"
+                },
+                "errors": {
+                    "type": "integer"
+                },
+                "memory": {
+                    "type": "number"
+                },
+                "requests": {
+                    "type": "integer"
+                }
+            }
+        },
+        "model.MonitorRoute": {
+            "type": "object",
+            "properties": {
+                "averageMs": {
+                    "type": "number"
+                },
+                "clientErrors": {
+                    "type": "integer"
+                },
+                "errors": {
+                    "type": "integer"
+                },
+                "maxMs": {
+                    "type": "number"
+                },
+                "method": {
+                    "type": "string"
+                },
+                "requests": {
+                    "type": "integer"
+                },
+                "route": {
+                    "type": "string"
+                },
+                "slow": {
+                    "type": "integer"
+                }
+            }
+        },
+        "model.MonitorSnapshot": {
+            "type": "object",
+            "properties": {
+                "cleanupFailed": {
+                    "type": "boolean"
+                },
+                "droppedLogs": {
+                    "type": "integer"
+                },
+                "failedLogs": {
+                    "type": "integer"
+                },
+                "history": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.MonitorPoint"
+                    }
+                },
+                "mysql": {
+                    "$ref": "#/definitions/model.MonitorComponent"
+                },
+                "queueDepth": {
+                    "type": "integer"
+                },
+                "redis": {
+                    "$ref": "#/definitions/model.MonitorComponent"
+                },
+                "routes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.MonitorRoute"
+                    }
+                },
+                "sampledAt": {
+                    "type": "string"
+                },
+                "server": {
+                    "$ref": "#/definitions/model.MonitorComponent"
+                },
+                "startedAt": {
                     "type": "string"
                 }
             }
