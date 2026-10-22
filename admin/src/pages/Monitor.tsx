@@ -1,8 +1,8 @@
-import { Alert, Button, Card, Col, Row, Space, Statistic, Switch, Table, Tabs, Tag, Typography } from 'antd'
+import { Alert, Button, Card, Col, Descriptions, Input, Row, Space, Statistic, Switch, Table, Tabs, Tag, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useEffect, useState } from 'react'
 import { getMonitor } from '../api/monitor'
-import type { ComponentMetrics, Metric, MonitorSnapshot, RouteMetric } from '../types/monitor'
+import type { ComponentMetrics, DatabaseTable, Metric, MonitorSnapshot, RedisKeyspace, RouteMetric } from '../types/monitor'
 
 function format(value: number, unit: string) {
   if (unit === 'bytes') {
@@ -22,6 +22,62 @@ function Metrics({ data }: { data: ComponentMetrics }) {
     {data.message && <Alert title={data.message} type={data.status === 'error' ? 'error' : 'info'} showIcon />}
     <Row gutter={[16, 16]}>{(data.metrics ?? []).map((m: Metric) => <Col xs={24} sm={12} xl={8} key={m.key}><Card size="small"><Statistic title={m.label} value={format(m.value, m.unit)} /></Card></Col>)}</Row>
   </Space>
+}
+function ConnectionDetails({ data }: { data: ComponentMetrics }) {
+  const connection = data.connection
+  if (!connection) return null
+  return <Card size="small" title="连接与实例信息" style={{ marginBottom: 16 }}>
+    <Descriptions size="small" column={{ xs: 1, sm: 2, xl: 3 }} items={[
+      { key: 'host', label: 'API 连接主机', children: <Typography.Text copyable>{connection.host || '—'}</Typography.Text> },
+      { key: 'port', label: 'API 连接端口', children: connection.port || '—' },
+      { key: 'database', label: '配置的数据库', children: connection.database || '—' },
+      { key: 'ips', label: '解析 IP', children: connection.resolvedIPs.length ? connection.resolvedIPs.join(' / ') : connection.resolveFailed ? '解析失败' : '—' },
+      ...(data.details ?? []).map(item => ({ key: `detail-${item.key}`, label: item.label, children: item.value || '—' })),
+    ]} />
+    <Typography.Paragraph type="secondary" style={{ marginTop: 12, marginBottom: 0 }}>地址是 API 访问数据库使用的地址；解析 IP 来自本次采样的 DNS 查询，可能是容器内网 IP。实例监听端口不一定等于宿主机映射端口。</Typography.Paragraph>
+  </Card>
+}
+const tableColumns: ColumnsType<DatabaseTable> = [
+  { title: '库名', dataIndex: 'schema', width: 180 },
+  { title: '表 / 视图名', dataIndex: 'name', width: 220, sorter: (a, b) => a.name.localeCompare(b.name), render: (v: string) => <Typography.Text copyable>{v}</Typography.Text> },
+  { title: '类型', dataIndex: 'type', width: 110, render: (v: string) => v === 'BASE TABLE' ? '表' : v === 'VIEW' ? '视图' : v },
+  { title: '引擎', dataIndex: 'engine', width: 100, render: (v: string | null) => v ?? '—' },
+  { title: '行数（估计）', dataIndex: 'rows', width: 140, render: (v: number | null) => v?.toLocaleString() ?? '—', sorter: (a, b) => (a.rows ?? -1) - (b.rows ?? -1) },
+  { title: '数据空间', dataIndex: 'dataBytes', width: 130, render: (v: number | null) => v === null ? '—' : format(v, 'bytes'), sorter: (a, b) => (a.dataBytes ?? -1) - (b.dataBytes ?? -1) },
+  { title: '索引空间', dataIndex: 'indexBytes', width: 130, render: (v: number | null) => v === null ? '—' : format(v, 'bytes'), sorter: (a, b) => (a.indexBytes ?? -1) - (b.indexBytes ?? -1) },
+  { title: '排序规则', dataIndex: 'collation', width: 210, render: (v: string | null) => v ?? '—' },
+  { title: '创建时间', dataIndex: 'createdAt', width: 200, render: (v: string | null) => v ? new Date(v).toLocaleString() : '—' },
+]
+function MySQLMonitor({ data }: { data: ComponentMetrics }) {
+  const [query, setQuery] = useState('')
+  const search = query.trim().toLowerCase()
+  const tables = (data.tables ?? []).filter(table => `${table.schema}.${table.name}`.toLowerCase().includes(search))
+  return <>
+    <ConnectionDetails data={data} />
+    <Card title="当前数据库表清单" size="small" style={{ marginBottom: 16 }}>
+      <Typography.Paragraph type="secondary">仅展示当前博客库。InnoDB 行数和空间来自数据库统计，可能延迟更新；视图无对应存储指标时显示「—」。</Typography.Paragraph>
+      {data.tablesTruncated && <Alert type="warning" showIcon title="当前仅采集空间最大的 500 张表 / 视图；搜索和排序仅针对已加载清单。" style={{ marginBottom: 12 }} />}
+      <Input.Search aria-label="搜索库名或表名" placeholder="搜索库名或表名" allowClear value={query} onChange={e => setQuery(e.target.value)} style={{ maxWidth: 360, marginBottom: 16 }} />
+      <Table<DatabaseTable> rowKey={r => `${r.schema}.${r.name}`} dataSource={tables} columns={tableColumns} size="small" scroll={{ x: 1520 }} pagination={{ pageSize: 10, showSizeChanger: false, showTotal: total => `共 ${total} 项` }} />
+    </Card>
+    <Typography.Paragraph type="secondary">下面为当前 MySQL 实例指标；累计值从数据库实例启动开始统计。慢查询计数受数据库慢查询阈值影响。</Typography.Paragraph>
+    <Metrics data={data} />
+  </>
+}
+function RedisMonitor({ data }: { data: ComponentMetrics }) {
+  return <>
+    <ConnectionDetails data={data} />
+    <Card title="Redis 数据库概况" size="small" style={{ marginBottom: 16 }}>
+      <Typography.Paragraph type="secondary">Redis 按 db 编号区分逻辑库，没有 MySQL 那样的表。下方列出 INFO 可见的非空库，键名和内容不采集；平均剩余有效期为过期键的采样估计，0 表示尚无有效估计。</Typography.Paragraph>
+      <Table<RedisKeyspace> rowKey="database" dataSource={data.keyspaces ?? []} size="small" scroll={{ x: 600 }} pagination={{ pageSize: 10, showSizeChanger: false }} columns={[
+        { title: '数据库', dataIndex: 'database', render: (v: number) => <Space>db{v}{data.connection?.database === `db${v}` && <Tag color="blue">当前连接</Tag>}</Space> },
+        { title: '键数', dataIndex: 'keys', render: (v: number) => v.toLocaleString(), sorter: (a, b) => a.keys - b.keys },
+        { title: '有过期时间的键', dataIndex: 'expires', render: (v: number) => v.toLocaleString() },
+        { title: '平均剩余有效期', dataIndex: 'avgTtlMs', render: (v: number) => v > 0 ? `${(v / 1000).toLocaleString(undefined, { maximumFractionDigits: 1 })} 秒` : '—' },
+      ]} />
+    </Card>
+    <Metrics data={data} />
+  </>
 }
 function metric(data: ComponentMetrics, key: string) { return data.metrics?.find(m => m.key === key)?.value }
 function alerts(data: MonitorSnapshot): string[] {
@@ -91,8 +147,8 @@ export default function Monitor() {
       </Row>
       <Tabs items={[
         { key: 'server', label: '服务器 / API', children: <Metrics data={data.server} /> },
-        { key: 'mysql', label: 'MySQL', children: <><Alert title="实例状态为当前 MySQL 实例累计值；库大小和表数仅限博客数据库。慢查询计数取决于 MySQL 的慢查询配置。" type="info" style={{ marginBottom: 16 }} /><Metrics data={data.mysql} /></> },
-        { key: 'redis', label: 'Redis', children: <Metrics data={data.redis} /> },
+        { key: 'mysql', label: 'MySQL', children: <MySQLMonitor data={data.mysql} /> },
+        { key: 'redis', label: 'Redis', children: <RedisMonitor data={data.redis} /> },
         { key: 'routes', label: '接口性能', children: <Table<RouteMetric> rowKey={r => `${r.method} ${r.route}`} dataSource={data.routes} columns={columns} scroll={{ x: 1000 }} pagination={{ pageSize: 15, showSizeChanger: false }} /> },
         { key: 'history', label: '近期趋势', children: <Table rowKey="at" dataSource={[...history].reverse()} pagination={{ pageSize: 15, showSizeChanger: false }} columns={[
           { title: '采样时间', dataIndex: 'at', render: (v: string) => new Date(v).toLocaleTimeString() },

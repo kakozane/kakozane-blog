@@ -6,7 +6,17 @@ export type MonitorLog = {
 }
 export type LogFilter = { kind: LogKind; page: number; scope?: string; result?: string; q?: string; from?: string; to?: string }
 export type Metric = { key: string; label: string; value: number; unit: string }
-export type ComponentMetrics = { status: 'pending' | 'ok' | 'partial' | 'error'; message?: string; metrics: Metric[] | null }
+export type DatabaseTable = {
+  schema: string; name: string; type: string; engine: string | null; rows: number | null
+  dataBytes: number | null; indexBytes: number | null; collation: string | null; createdAt: string | null
+}
+export type RedisKeyspace = { database: number; keys: number; expires: number; avgTtlMs: number }
+export type ComponentMetrics = {
+  status: 'pending' | 'ok' | 'partial' | 'error'; message?: string; metrics: Metric[] | null
+  connection?: { host: string; port: string; database: string; resolvedIPs: string[]; resolveFailed?: boolean }
+  details?: { key: string; label: string; value: string }[]
+  tables?: DatabaseTable[]; tablesTruncated?: boolean; keyspaces?: RedisKeyspace[]
+}
 export type RouteMetric = { method: string; route: string; requests: number; errors: number; clientErrors: number; slow: number; averageMs: number; maxMs: number }
 export type MonitorSnapshot = {
   sampledAt: string; startedAt: string; server: ComponentMetrics; mysql: ComponentMetrics; redis: ComponentMetrics

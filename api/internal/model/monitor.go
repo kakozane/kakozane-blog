@@ -32,9 +32,47 @@ type MonitorMetric struct {
 }
 
 type MonitorComponent struct {
-	Status  string          `json:"status"`
-	Message string          `json:"message,omitempty"`
-	Metrics []MonitorMetric `json:"metrics"`
+	Status          string             `json:"status"`
+	Message         string             `json:"message,omitempty"`
+	Metrics         []MonitorMetric    `json:"metrics"`
+	Connection      *MonitorConnection `json:"connection,omitempty"`
+	Details         []MonitorDetail    `json:"details,omitempty"`
+	Tables          []MonitorTable     `json:"tables,omitempty"`
+	TablesTruncated bool               `json:"tablesTruncated,omitempty"`
+	Keyspaces       []MonitorKeyspace  `json:"keyspaces,omitempty"`
+}
+
+type MonitorConnection struct {
+	Host          string   `json:"host"`
+	Port          string   `json:"port"`
+	Database      string   `json:"database"`
+	ResolvedIPs   []string `json:"resolvedIPs"`
+	ResolveFailed bool     `json:"resolveFailed,omitempty"`
+}
+
+type MonitorDetail struct {
+	Key   string `json:"key"`
+	Label string `json:"label"`
+	Value string `json:"value"`
+}
+
+type MonitorTable struct {
+	Schema     string     `json:"schema"`
+	Name       string     `json:"name"`
+	Type       string     `json:"type"`
+	Engine     *string    `json:"engine"`
+	Rows       *int64     `json:"rows"`
+	DataBytes  *int64     `json:"dataBytes"`
+	IndexBytes *int64     `json:"indexBytes"`
+	Collation  *string    `json:"collation"`
+	CreatedAt  *time.Time `json:"createdAt"`
+}
+
+type MonitorKeyspace struct {
+	Database int   `json:"database"`
+	Keys     int64 `json:"keys"`
+	Expires  int64 `json:"expires"`
+	AvgTTLMS int64 `json:"avgTtlMs"`
 }
 
 type MonitorRoute struct {

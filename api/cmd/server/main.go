@@ -103,7 +103,7 @@ func run() error {
 		return fmt.Errorf("apply migrations: %w", err)
 	}
 
-	monitorService := service.NewMonitorService(repository.NewMonitorRepository(db, redisClient), cfg.Media.Directory)
+	monitorService := service.NewMonitorService(repository.NewMonitorRepository(db, redisClient, mySQLConfig.Addr, cfg.MySQL.Database), cfg.Media.Directory)
 	monitorCtx, stopMonitor := context.WithCancel(context.Background())
 	monitorDone := make(chan struct{})
 	go func() { defer close(monitorDone); monitorService.Run(monitorCtx) }()

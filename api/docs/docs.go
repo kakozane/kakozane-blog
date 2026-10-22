@@ -2313,6 +2313,21 @@ const docTemplate = `{
         "model.MonitorComponent": {
             "type": "object",
             "properties": {
+                "connection": {
+                    "$ref": "#/definitions/model.MonitorConnection"
+                },
+                "details": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.MonitorDetail"
+                    }
+                },
+                "keyspaces": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.MonitorKeyspace"
+                    }
+                },
                 "message": {
                     "type": "string"
                 },
@@ -2324,6 +2339,69 @@ const docTemplate = `{
                 },
                 "status": {
                     "type": "string"
+                },
+                "tables": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.MonitorTable"
+                    }
+                },
+                "tablesTruncated": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "model.MonitorConnection": {
+            "type": "object",
+            "properties": {
+                "database": {
+                    "type": "string"
+                },
+                "host": {
+                    "type": "string"
+                },
+                "port": {
+                    "type": "string"
+                },
+                "resolveFailed": {
+                    "type": "boolean"
+                },
+                "resolvedIPs": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "model.MonitorDetail": {
+            "type": "object",
+            "properties": {
+                "key": {
+                    "type": "string"
+                },
+                "label": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.MonitorKeyspace": {
+            "type": "object",
+            "properties": {
+                "avgTtlMs": {
+                    "type": "integer"
+                },
+                "database": {
+                    "type": "integer"
+                },
+                "expires": {
+                    "type": "integer"
+                },
+                "keys": {
+                    "type": "integer"
                 }
             }
         },
@@ -2433,6 +2511,38 @@ const docTemplate = `{
                     "$ref": "#/definitions/model.MonitorComponent"
                 },
                 "startedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.MonitorTable": {
+            "type": "object",
+            "properties": {
+                "collation": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "dataBytes": {
+                    "type": "integer"
+                },
+                "engine": {
+                    "type": "string"
+                },
+                "indexBytes": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "rows": {
+                    "type": "integer"
+                },
+                "schema": {
+                    "type": "string"
+                },
+                "type": {
                     "type": "string"
                 }
             }

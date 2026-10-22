@@ -12,12 +12,14 @@ import (
 )
 
 type MonitorRepository struct {
-	db    *sql.DB
-	redis *redis.Client
+	db            *sql.DB
+	redis         *redis.Client
+	mysqlAddress  string
+	mysqlDatabase string
 }
 
-func NewMonitorRepository(db *sql.DB, client *redis.Client) *MonitorRepository {
-	return &MonitorRepository{db, client}
+func NewMonitorRepository(db *sql.DB, client *redis.Client, mysqlAddress, mysqlDatabase string) *MonitorRepository {
+	return &MonitorRepository{db: db, redis: client, mysqlAddress: mysqlAddress, mysqlDatabase: mysqlDatabase}
 }
 
 func (r *MonitorRepository) InsertLog(ctx context.Context, item model.MonitorLog) error {
@@ -76,7 +78,7 @@ func metric(key, label string, value float64, unit string) model.MonitorMetric {
 }
 
 func (r *MonitorRepository) MySQL(ctx context.Context) model.MonitorComponent {
-	result := model.MonitorComponent{Status: "ok", Metrics: []model.MonitorMetric{}}
+	result := model.MonitorComponent{Status: "ok", Metrics: []model.MonitorMetric{}, Connection: monitorConnection(ctx, r.mysqlAddress, r.mysqlDatabase)}
 	start := time.Now()
 	if err := r.db.PingContext(ctx); err != nil {
 		result.Status = "error"
@@ -86,19 +88,33 @@ func (r *MonitorRepository) MySQL(ctx context.Context) model.MonitorComponent {
 	result.Metrics = append(result.Metrics, metric("latency", "连接延迟", float64(time.Since(start).Microseconds())/1000, "ms"))
 	stats := r.db.Stats()
 	result.Metrics = append(result.Metrics, metric("pool_open", "API 连接池打开连接", float64(stats.OpenConnections), ""), metric("pool_in_use", "API 连接池使用中", float64(stats.InUse), ""), metric("pool_wait", "API 连接池累计等待", float64(stats.WaitCount), ""))
+	if err := r.mysqlStatus(ctx, &result); err != nil {
+		monitorPartial(&result, "MySQL 实例状态不可读")
+	}
+	r.mysqlDetails(ctx, &result)
+	var size, tables float64
+	if err := r.db.QueryRowContext(ctx, `SELECT COALESCE(SUM(data_length + index_length),0), COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE()`).Scan(&size, &tables); err == nil {
+		result.Metrics = append(result.Metrics, metric("schema_bytes", "当前博客库大小（估计）", size, "bytes"), metric("tables", "当前博客库表 / 视图数", tables, ""))
+	} else {
+		monitorPartial(&result, "当前库大小和表数不可读")
+	}
+	if err := r.mysqlTables(ctx, &result); err != nil {
+		monitorPartial(&result, "当前库表清单不可读")
+	}
+	return result
+}
+
+func (r *MonitorRepository) mysqlStatus(ctx context.Context, result *model.MonitorComponent) error {
 	rows, err := r.db.QueryContext(ctx, `SHOW GLOBAL STATUS WHERE Variable_name IN ('Uptime','Threads_connected','Threads_running','Questions','Slow_queries','Aborted_connects','Innodb_buffer_pool_reads','Innodb_buffer_pool_read_requests')`)
 	if err != nil {
-		result.Status = "partial"
-		result.Message = "MySQL 可连接，状态指标不可读（请检查监控查询权限）"
-		return result
+		return err
 	}
 	defer rows.Close()
 	labels := map[string]string{"Uptime": "实例运行时长", "Threads_connected": "实例连接数", "Threads_running": "实例活跃线程", "Questions": "累计查询", "Slow_queries": "累计慢查询", "Aborted_connects": "累计连接失败", "Innodb_buffer_pool_reads": "缓冲池磁盘读取", "Innodb_buffer_pool_read_requests": "缓冲池读取请求"}
 	for rows.Next() {
 		var key, value string
 		if err := rows.Scan(&key, &value); err != nil {
-			result.Status = "partial"
-			break
+			return err
 		}
 		if n, err := strconv.ParseFloat(value, 64); err == nil {
 			unit := ""
@@ -108,18 +124,7 @@ func (r *MonitorRepository) MySQL(ctx context.Context) model.MonitorComponent {
 			result.Metrics = append(result.Metrics, metric(key, labels[key], n, unit))
 		}
 	}
-	if rows.Err() != nil {
-		result.Status = "partial"
-	}
-	rows.Close()
-	var size, tables float64
-	if err := r.db.QueryRowContext(ctx, `SELECT COALESCE(SUM(data_length + index_length),0), COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE()`).Scan(&size, &tables); err == nil {
-		result.Metrics = append(result.Metrics, metric("schema_bytes", "当前博客库大小（估计）", size, "bytes"), metric("tables", "当前博客库表数", tables, ""))
-	} else {
-		result.Status = "partial"
-		result.Message = "部分数据库指标不可读"
-	}
-	return result
+	return rows.Err()
 }
 
 // 只返回允许的数值字段，不暴露 Redis 配置、键名和缓存内容。
@@ -165,7 +170,8 @@ func redisMetrics(info string) []model.MonitorMetric {
 	return metrics
 }
 func (r *MonitorRepository) Redis(ctx context.Context) model.MonitorComponent {
-	result := model.MonitorComponent{Status: "ok", Metrics: []model.MonitorMetric{}}
+	options := r.redis.Options()
+	result := model.MonitorComponent{Status: "ok", Metrics: []model.MonitorMetric{}, Connection: monitorConnection(ctx, options.Addr, "db"+strconv.Itoa(options.DB))}
 	start := time.Now()
 	if err := r.redis.Ping(ctx).Err(); err != nil {
 		result.Status = "error"
@@ -173,18 +179,17 @@ func (r *MonitorRepository) Redis(ctx context.Context) model.MonitorComponent {
 		return result
 	}
 	result.Metrics = append(result.Metrics, metric("latency", "PING 延迟", float64(time.Since(start).Microseconds())/1000, "ms"))
-	info, err := r.redis.Info(ctx, "server", "clients", "memory", "stats", "persistence").Result()
+	info, err := r.redis.Info(ctx, "server", "clients", "memory", "stats", "persistence", "replication", "keyspace").Result()
 	if err != nil {
-		result.Status = "partial"
-		result.Message = "Redis 可连接，INFO 指标不可读（请检查 ACL）"
-		return result
+		monitorPartial(&result, "Redis INFO 指标不可读（请检查 ACL）")
+	} else {
+		result.Metrics = append(result.Metrics, redisMetrics(info)...)
+		result.Details, result.Keyspaces = redisDetails(info)
 	}
-	result.Metrics = append(result.Metrics, redisMetrics(info)...)
 	if count, err := r.redis.DBSize(ctx).Result(); err == nil {
 		result.Metrics = append(result.Metrics, metric("keys", "当前数据库键数", float64(count), ""))
 	} else {
-		result.Status = "partial"
-		result.Message = "当前数据库键数不可读"
+		monitorPartial(&result, "当前数据库键数不可读")
 	}
 	return result
 }

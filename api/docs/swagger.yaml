@@ -26,6 +26,16 @@ definitions:
     type: object
   model.MonitorComponent:
     properties:
+      connection:
+        $ref: '#/definitions/model.MonitorConnection'
+      details:
+        items:
+          $ref: '#/definitions/model.MonitorDetail'
+        type: array
+      keyspaces:
+        items:
+          $ref: '#/definitions/model.MonitorKeyspace'
+        type: array
       message:
         type: string
       metrics:
@@ -34,6 +44,47 @@ definitions:
         type: array
       status:
         type: string
+      tables:
+        items:
+          $ref: '#/definitions/model.MonitorTable'
+        type: array
+      tablesTruncated:
+        type: boolean
+    type: object
+  model.MonitorConnection:
+    properties:
+      database:
+        type: string
+      host:
+        type: string
+      port:
+        type: string
+      resolveFailed:
+        type: boolean
+      resolvedIPs:
+        items:
+          type: string
+        type: array
+    type: object
+  model.MonitorDetail:
+    properties:
+      key:
+        type: string
+      label:
+        type: string
+      value:
+        type: string
+    type: object
+  model.MonitorKeyspace:
+    properties:
+      avgTtlMs:
+        type: integer
+      database:
+        type: integer
+      expires:
+        type: integer
+      keys:
+        type: integer
     type: object
   model.MonitorMetric:
     properties:
@@ -105,6 +156,27 @@ definitions:
       server:
         $ref: '#/definitions/model.MonitorComponent'
       startedAt:
+        type: string
+    type: object
+  model.MonitorTable:
+    properties:
+      collation:
+        type: string
+      createdAt:
+        type: string
+      dataBytes:
+        type: integer
+      engine:
+        type: string
+      indexBytes:
+        type: integer
+      name:
+        type: string
+      rows:
+        type: integer
+      schema:
+        type: string
+      type:
         type: string
     type: object
   model.Post:

@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	_ "github.com/go-sql-driver/mysql"
+	"github.com/go-sql-driver/mysql"
 	"github.com/kakozane/kakozane-blog/api/internal/model"
 	"github.com/kakozane/kakozane-blog/api/internal/password"
 	"github.com/kakozane/kakozane-blog/api/internal/repository"
@@ -28,17 +28,29 @@ func TestMonitorIntegration(t *testing.T) {
 	if dsn == "" || address == "" {
 		t.Skip("set BLOG_MONITOR_TEST_DSN to a disposable MySQL database and BLOG_TEST_REDIS")
 	}
+	mysqlConfig, err := mysql.ParseDSN(dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer db.Close()
-	client := redis.NewClient(&redis.Options{Addr: address})
+	client := redis.NewClient(&redis.Options{Addr: address, DB: 3, ContextTimeoutEnabled: true})
 	defer client.Close()
 	ctx := context.Background()
 	if err := migrations.Apply(ctx, db); err != nil {
 		t.Fatal(err)
 	}
+	if _, err := db.Exec(`CREATE OR REPLACE VIEW monitor_test_view AS SELECT 'must-not-expose-row-content' AS payload`); err != nil {
+		t.Fatal(err)
+	}
+	defer db.Exec("DROP VIEW monitor_test_view")
+	if err := client.Set(ctx, "must-not-expose-key", "must-not-expose-value", time.Hour).Err(); err != nil {
+		t.Fatal(err)
+	}
+	defer client.Del(ctx, "must-not-expose-key")
 	hash, err := password.Hash("monitor-test-password")
 	if err != nil {
 		t.Fatal(err)
@@ -52,7 +64,7 @@ func TestMonitorIntegration(t *testing.T) {
 	authRepo := repository.NewAuthRepository(db, client)
 	authService := service.NewAuthService(authRepo)
 	auth := NewAuthHandler(authService, nil)
-	repo := repository.NewMonitorRepository(db, client)
+	repo := repository.NewMonitorRepository(db, client, mysqlConfig.Addr, mysqlConfig.DBName)
 	s := service.NewMonitorService(repo, t.TempDir())
 	h := NewMonitorHandler(s)
 	runCtx, cancel := context.WithCancel(ctx)
@@ -143,13 +155,86 @@ func TestMonitorIntegration(t *testing.T) {
 	if snapshot.MySQL.Status != "ok" || snapshot.Redis.Status != "ok" {
 		t.Fatalf("dependency sampling failed: %+v %+v", snapshot.MySQL, snapshot.Redis)
 	}
+	if snapshot.MySQL.Connection == nil || snapshot.MySQL.Connection.Database != mysqlConfig.DBName || snapshot.MySQL.Connection.Port == "" || len(snapshot.MySQL.Connection.ResolvedIPs) == 0 {
+		t.Fatal("MySQL connection metadata missing")
+	}
+	if len(snapshot.MySQL.Details) != 8 || snapshot.Redis.Connection.Database != "db3" || len(snapshot.Redis.Details) == 0 {
+		t.Fatal("database details missing")
+	}
+	seenView, seenTable, seenKeyspace := false, false, false
+	for _, table := range snapshot.MySQL.Tables {
+		if table.Schema != mysqlConfig.DBName {
+			t.Fatal("table outside current schema exposed")
+		}
+		if table.Name == "monitor_test_view" {
+			seenView = table.Type == "VIEW" && table.Rows == nil && table.DataBytes == nil && table.Engine == nil
+		}
+		if table.Name == "monitor_logs" {
+			seenTable = table.Rows != nil && table.DataBytes != nil && table.IndexBytes != nil && table.Engine != nil && table.CreatedAt != nil
+		}
+	}
+	for _, space := range snapshot.Redis.Keyspaces {
+		if space.Database == 3 && space.Keys > 0 && space.Expires > 0 {
+			seenKeyspace = true
+		}
+	}
+	if !seenView || !seenTable || !seenKeyspace {
+		t.Fatalf("metadata not sampled: view=%v table=%v keyspace=%v", seenView, seenTable, seenKeyspace)
+	}
+	w = request("GET", "/api/v1/admin/monitor/overview", "", cookie)
+	if w.Code != 200 || !strings.Contains(w.Body.String(), "monitor_test_view") {
+		t.Fatal("admin database details unavailable")
+	}
+	for _, forbidden := range []string{"must-not-expose", "password_hash", "monitor-test-password", "requirepass"} {
+		if strings.Contains(w.Body.String(), forbidden) {
+			t.Fatalf("monitor response leaked %s", forbidden)
+		}
+	}
+	// 仅当前测试库的 SELECT 权限，也应能采集库/表和实例摘要。
+	if _, err := db.Exec("CREATE USER IF NOT EXISTS 'monitor_readonly_test'@'%' IDENTIFIED BY 'monitor-readonly-only'"); err != nil {
+		t.Fatal(err)
+	}
+	defer db.Exec("DROP USER 'monitor_readonly_test'@'%'")
+	if _, err := db.Exec("GRANT SELECT ON `" + strings.ReplaceAll(mysqlConfig.DBName, "`", "``") + "`.* TO 'monitor_readonly_test'@'%'"); err != nil {
+		t.Fatal(err)
+	}
+	readonlyConfig := mysqlConfig.Clone()
+	readonlyConfig.User, readonlyConfig.Passwd = "monitor_readonly_test", "monitor-readonly-only"
+	readonlyDB, err := sql.Open("mysql", readonlyConfig.FormatDSN())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer readonlyDB.Close()
+	readonly := repository.NewMonitorRepository(readonlyDB, client, mysqlConfig.Addr, mysqlConfig.DBName).MySQL(ctx)
+	if readonly.Status != "ok" || len(readonly.Tables) == 0 || len(readonly.Details) == 0 {
+		t.Fatalf("read-only schema account cannot monitor: %+v", readonly)
+	}
+	// INFO 被 ACL 禁止时，仍能显示配置地址及 DBSIZE 的结果。
+	if err := client.Do(ctx, "ACL", "SETUSER", "monitor_limited_test", "on", ">monitor-acl-only", "-@all", "+ping", "+dbsize").Err(); err != nil {
+		t.Fatal(err)
+	}
+	defer client.Do(ctx, "ACL", "DELUSER", "monitor_limited_test")
+	limitedClient := redis.NewClient(&redis.Options{Addr: address, Username: "monitor_limited_test", Password: "monitor-acl-only", ContextTimeoutEnabled: true})
+	defer limitedClient.Close()
+	limited := repository.NewMonitorRepository(db, limitedClient, mysqlConfig.Addr, mysqlConfig.DBName).Redis(ctx)
+	if limited.Status != "partial" || limited.Connection == nil || len(limited.Details) != 0 || len(limited.Keyspaces) != 0 {
+		t.Fatalf("Redis ACL failure not isolated: %+v", limited)
+	}
+	keysAvailable := false
+	for _, metric := range limited.Metrics {
+		keysAvailable = keysAvailable || metric.Key == "keys"
+	}
+	if !keysAvailable {
+		t.Fatal("Redis INFO ACL failure hid DBSIZE")
+	}
 	// 同一连接中断不能拖住其他依赖探测。
 	dead := redis.NewClient(&redis.Options{Addr: "127.0.0.1:1", MaxRetries: -1})
 	defer dead.Close()
-	degraded := repository.NewMonitorRepository(db, dead)
+	degraded := repository.NewMonitorRepository(db, dead, mysqlConfig.Addr, mysqlConfig.DBName)
 	timeout, cancelProbe := context.WithTimeout(ctx, 200*time.Millisecond)
 	defer cancelProbe()
-	if degraded.Redis(timeout).Status != "error" {
+	failed := degraded.Redis(timeout)
+	if failed.Status != "error" || failed.Connection == nil || failed.Connection.Host != "127.0.0.1" || failed.Connection.Port != "1" {
 		t.Fatal("dependency failure reported healthy")
 	}
 	old := model.MonitorLog{Kind: "login", Scope: "front", Method: "POST", Route: "old", Status: 200, CreatedAt: time.Now().AddDate(0, 0, -31)}
