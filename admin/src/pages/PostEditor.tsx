@@ -1,5 +1,7 @@
-import { Alert, Button, Card, Form, Input, Modal, Select, Space, Switch, Typography, message } from 'antd'
+import { Alert, Button, Card, DatePicker, Form, Input, Modal, Select, Space, Switch, Typography, message } from 'antd'
 import { useEffect, useState } from 'react'
+import dayjs, { type Dayjs } from 'dayjs'
+import 'dayjs/locale/zh-cn'
 import { Link, useNavigate, useLoaderData, useParams, useRouteLoaderData } from 'react-router'
 import { useCloudDraft } from '../hooks/useCloudDraft'
 import WritingTools from '../components/WritingTools'
@@ -13,14 +15,6 @@ import { useDraftBackup } from '../hooks/useDraftBackup'
 import type { AdminUser } from '../types/auth'
 import type { Post, PostInput, Term } from '../types/content'
 
-// 表单与草稿保存带时区的 ISO 时间，输入框按用户电脑的本地时区显示。
-function localDateTime(value?: string | null) {
-  if (!value) return ''
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return ''
-  return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 19)
-}
-
 const emptyPost: PostInput = { kind: 'post', title: '', slug: '', excerpt: '', contentMd: '', coverUrl: '', status: 'draft', pinned: false, categoryId: null, tagIds: [] }
 
 function PostEditorForm({ kind, post }: { kind: Post['kind']; post?: Post }) {
@@ -32,6 +26,7 @@ function PostEditorForm({ kind, post }: { kind: Post['kind']; post?: Post }) {
   const navigate = useNavigate()
   const [form] = Form.useForm<PostInput>()
   const preview = Form.useWatch('contentMd', form) ?? ''
+  const createdAt = Form.useWatch('createdAt', form)
   const [categories, setCategories] = useState<Term[]>([])
   const [tags, setTags] = useState<Term[]>([])
   const [loading, setLoading] = useState(Boolean(postId))
@@ -139,12 +134,14 @@ function PostEditorForm({ kind, post }: { kind: Post['kind']; post?: Post }) {
           </Space>
           <Space size="large" wrap>
             {(['createdAt', 'publishedAt'] as const).map((field) => (
-              <Form.Item key={field} name={field} label={field === 'createdAt' ? '创建时间' : '发布时间'}
+              <Form.Item key={field} name={field} label={field === 'createdAt' ? '创建时间' : <Space>发布时间<Button size="small" htmlType="button"
+                  disabled={!createdAt || saving || Boolean(cloud.recovery) || Boolean(postId && postVersion === undefined)}
+                  onClick={(event) => { event.preventDefault(); form.setFieldValue('publishedAt', createdAt); queueDraft(); void form.validateFields(['publishedAt']).catch(() => {}) }}>使用创建时间</Button></Space>}
                 extra={field === 'createdAt' ? '可填写原文创作时间；留空时新文章自动生成，已有文章保留原值。' : '用于前台显示、排序和归档；留空时首次发布自动生成，已有时间保留。'}
-                getValueProps={(value: string | null | undefined) => ({ value: localDateTime(value) })}
-                getValueFromEvent={(event) => event.target.value ? new Date(event.target.value).toISOString() : null}
+                getValueProps={(value: string | null | undefined) => ({ value: value ? dayjs(value).locale('zh-cn') : null })}
+                getValueFromEvent={(value: Dayjs | null) => value?.toISOString() ?? null}
                 rules={[{ validator: (_, value) => !value || (new Date(value).getTime() >= 1000 && new Date(value).getTime() <= Date.now()) ? Promise.resolve() : Promise.reject(new Error('请选择 1970 年之后且不晚于当前的时间')) }]}>
-                <Input type="datetime-local" step={1} />
+                <DatePicker showTime format="YYYY-MM-DD HH:mm:ss" placeholder="选择日期和时间" style={{ width: 240 }} />
               </Form.Item>
             ))}
           </Space>
