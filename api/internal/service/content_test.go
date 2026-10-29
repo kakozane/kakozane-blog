@@ -101,3 +101,22 @@ func TestRejectInvalidPostSort(t *testing.T) {
 		t.Fatalf("admin sort: got %v, want invalid input", err)
 	}
 }
+
+func TestRejectInvalidPostTimes(t *testing.T) {
+	for _, value := range []time.Time{time.Time{}, time.Unix(0, 0), time.Now().Add(time.Hour)} {
+		for _, field := range []string{"createdAt", "publishedAt"} {
+			t.Run(field+value.String(), func(t *testing.T) {
+				input := model.PostInput{Title: "Test", Slug: "test", Status: "draft"}
+				if field == "createdAt" {
+					input.CreatedAt = &value
+				} else {
+					input.PublishedAt = &value
+				}
+				_, err := NewContentService(nil, nil).SavePost(context.Background(), 0, 1, input)
+				if !errors.Is(err, ErrInvalidInput) {
+					t.Fatalf("got %v, want invalid input", err)
+				}
+			})
+		}
+	}
+}

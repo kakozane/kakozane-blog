@@ -36,17 +36,19 @@ type Post struct {
 }
 
 type PostInput struct {
-	Version    *int64  `json:"version,omitempty"`
-	Kind       string  `json:"kind"`
-	Title      string  `json:"title"`
-	Slug       string  `json:"slug"`
-	Excerpt    string  `json:"excerpt"`
-	ContentMD  string  `json:"contentMd"`
-	CoverURL   string  `json:"coverUrl"`
-	Status     string  `json:"status"`
-	Pinned     bool    `json:"pinned"`
-	CategoryID *int64  `json:"categoryId"`
-	TagIDs     []int64 `json:"tagIds"`
+	CreatedAt   *time.Time `json:"createdAt,omitempty"`
+	PublishedAt *time.Time `json:"publishedAt,omitempty"`
+	Version     *int64     `json:"version,omitempty"`
+	Kind        string     `json:"kind"`
+	Title       string     `json:"title"`
+	Slug        string     `json:"slug"`
+	Excerpt     string     `json:"excerpt"`
+	ContentMD   string     `json:"contentMd"`
+	CoverURL    string     `json:"coverUrl"`
+	Status      string     `json:"status"`
+	Pinned      bool       `json:"pinned"`
+	CategoryID  *int64     `json:"categoryId"`
+	TagIDs      []int64    `json:"tagIds"`
 }
 
 type PostFilter struct {

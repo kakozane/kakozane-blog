@@ -23,6 +23,8 @@ export type Post = {
 }
 
 export type PostInput = {
+  createdAt?: string | null
+  publishedAt?: string | null
   version?: number
   kind: 'post' | 'note' | 'thought'
   title: string

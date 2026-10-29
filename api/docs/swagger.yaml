@@ -230,12 +230,16 @@ definitions:
         type: string
       coverUrl:
         type: string
+      createdAt:
+        type: string
       excerpt:
         type: string
       kind:
         type: string
       pinned:
         type: boolean
+      publishedAt:
+        type: string
       slug:
         type: string
       status:

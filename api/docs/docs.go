@@ -2624,6 +2624,9 @@ const docTemplate = `{
                 "coverUrl": {
                     "type": "string"
                 },
+                "createdAt": {
+                    "type": "string"
+                },
                 "excerpt": {
                     "type": "string"
                 },
@@ -2632,6 +2635,9 @@ const docTemplate = `{
                 },
                 "pinned": {
                     "type": "boolean"
+                },
+                "publishedAt": {
+                    "type": "string"
                 },
                 "slug": {
                     "type": "string"

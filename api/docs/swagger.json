@@ -2620,6 +2620,9 @@
                 "coverUrl": {
                     "type": "string"
                 },
+                "createdAt": {
+                    "type": "string"
+                },
                 "excerpt": {
                     "type": "string"
                 },
@@ -2628,6 +2631,9 @@
                 },
                 "pinned": {
                     "type": "boolean"
+                },
+                "publishedAt": {
+                    "type": "string"
                 },
                 "slug": {
                     "type": "string"

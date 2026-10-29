@@ -140,6 +140,13 @@ func (s *ContentService) ListNoteSeries(ctx context.Context) ([]model.NoteSeries
 }
 
 func (s *ContentService) SavePost(ctx context.Context, id, authorID int64, input model.PostInput) (model.Post, error) {
+	// 历史时间用于补录文章，不承担定时发布；范围兼容 MySQL TIMESTAMP。
+	now := time.Now()
+	for _, value := range []*time.Time{input.CreatedAt, input.PublishedAt} {
+		if value != nil && (value.Before(time.Unix(1, 0)) || value.After(now)) {
+			return model.Post{}, ErrInvalidInput
+		}
+	}
 	input.Title = strings.TrimSpace(input.Title)
 	input.Slug = strings.ToLower(strings.TrimSpace(input.Slug))
 	input.Excerpt = strings.TrimSpace(input.Excerpt)
