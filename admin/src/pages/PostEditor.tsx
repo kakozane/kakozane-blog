@@ -144,6 +144,13 @@ function PostEditorForm({ kind, post }: { kind: Post['kind']; post?: Post }) {
                 <DatePicker showTime format="YYYY-MM-DD HH:mm:ss" placeholder="选择日期和时间" style={{ width: 240 }} />
               </Form.Item>
             ))}
+            {postId && <Form.Item name="updatedAt" label="更新时间"
+              extra={`当前：${post ? dayjs(post.updatedAt).format('YYYY-MM-DD HH:mm:ss') : '—'}。留空则保存时自动更新；选择后使用指定时间。`}
+              getValueProps={(value: string | null | undefined) => ({ value: value ? dayjs(value).locale('zh-cn') : null })}
+              getValueFromEvent={(value: Dayjs | null) => value?.toISOString() ?? null}
+              rules={[{ validator: (_, value) => !value || (new Date(value).getTime() >= 1000 && new Date(value).getTime() <= Date.now()) ? Promise.resolve() : Promise.reject(new Error('请选择 1970 年之后且不晚于当前的时间')) }]}>
+              <DatePicker showTime format="YYYY-MM-DD HH:mm:ss" placeholder="留空则自动更新" style={{ width: 240 }} />
+            </Form.Item>}
           </Space>
           <Typography.Paragraph type="secondary">按当前设备时区填写。发布时间不会触发定时发布，是否公开由“状态”决定。</Typography.Paragraph>
           <Form.Item><Space><Button disabled={uploadingImage} htmlType="submit" loading={saving} type="primary">保存{label}</Button><Button disabled={uploadingImage} htmlType="button" onClick={openPreview}>前台预览</Button></Space></Form.Item>

@@ -2654,6 +2654,9 @@ const docTemplate = `{
                 "title": {
                     "type": "string"
                 },
+                "updatedAt": {
+                    "type": "string"
+                },
                 "version": {
                     "type": "integer"
                 }

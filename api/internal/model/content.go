@@ -36,6 +36,7 @@ type Post struct {
 }
 
 type PostInput struct {
+	UpdatedAt   *time.Time `json:"updatedAt,omitempty"`
 	CreatedAt   *time.Time `json:"createdAt,omitempty"`
 	PublishedAt *time.Time `json:"publishedAt,omitempty"`
 	Version     *int64     `json:"version,omitempty"`

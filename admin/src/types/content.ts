@@ -23,6 +23,7 @@ export type Post = {
 }
 
 export type PostInput = {
+  updatedAt?: string | null
   createdAt?: string | null
   publishedAt?: string | null
   version?: number

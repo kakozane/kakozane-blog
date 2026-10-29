@@ -404,9 +404,9 @@ func (r *ContentRepository) SavePost(ctx context.Context, id, authorID int64, in
 	}
 	defer tx.Rollback()
 	if id == 0 {
-		result, err := tx.ExecContext(ctx, `INSERT INTO posts (author_id, category_id, kind, title, slug, excerpt, content_md, cover_url, status, pinned, published_at, created_at)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, CASE WHEN ? = 'published' THEN CURRENT_TIMESTAMP ELSE NULL END), COALESCE(?, CURRENT_TIMESTAMP))`,
-			authorID, input.CategoryID, input.Kind, input.Title, input.Slug, input.Excerpt, input.ContentMD, input.CoverURL, input.Status, input.Pinned, input.PublishedAt, input.Status, input.CreatedAt)
+		result, err := tx.ExecContext(ctx, `INSERT INTO posts (author_id, category_id, kind, title, slug, excerpt, content_md, cover_url, status, pinned, published_at, created_at, updated_at)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, CASE WHEN ? = 'published' THEN CURRENT_TIMESTAMP ELSE NULL END), COALESCE(?, CURRENT_TIMESTAMP), COALESCE(?, CURRENT_TIMESTAMP))`,
+			authorID, input.CategoryID, input.Kind, input.Title, input.Slug, input.Excerpt, input.ContentMD, input.CoverURL, input.Status, input.Pinned, input.PublishedAt, input.Status, input.CreatedAt, input.UpdatedAt)
 		if err != nil {
 			return 0, err
 		}
@@ -430,9 +430,9 @@ func (r *ContentRepository) SavePost(ctx context.Context, id, authorID int64, in
 			return 0, err
 		}
 		result, err := tx.ExecContext(ctx, `UPDATE posts SET version = version + 1, category_id = ?, kind = ?, title = ?, slug = ?, excerpt = ?, content_md = ?, cover_url = ?, status = ?, pinned = ?,
-			created_at = COALESCE(?, created_at),
+			updated_at = COALESCE(?, CURRENT_TIMESTAMP), created_at = COALESCE(?, created_at),
 			published_at = COALESCE(?, CASE WHEN ? = 'published' THEN COALESCE(published_at, CURRENT_TIMESTAMP) ELSE published_at END) WHERE id = ?`,
-			input.CategoryID, input.Kind, input.Title, input.Slug, input.Excerpt, input.ContentMD, input.CoverURL, input.Status, input.Pinned, input.CreatedAt, input.PublishedAt, input.Status, id)
+			input.CategoryID, input.Kind, input.Title, input.Slug, input.Excerpt, input.ContentMD, input.CoverURL, input.Status, input.Pinned, input.UpdatedAt, input.CreatedAt, input.PublishedAt, input.Status, id)
 		if err := affected(result, err); err != nil {
 			return 0, err
 		}

@@ -104,13 +104,15 @@ func TestRejectInvalidPostSort(t *testing.T) {
 
 func TestRejectInvalidPostTimes(t *testing.T) {
 	for _, value := range []time.Time{time.Time{}, time.Unix(0, 0), time.Now().Add(time.Hour)} {
-		for _, field := range []string{"createdAt", "publishedAt"} {
+		for _, field := range []string{"createdAt", "publishedAt", "updatedAt"} {
 			t.Run(field+value.String(), func(t *testing.T) {
 				input := model.PostInput{Title: "Test", Slug: "test", Status: "draft"}
 				if field == "createdAt" {
 					input.CreatedAt = &value
-				} else {
+				} else if field == "publishedAt" {
 					input.PublishedAt = &value
+				} else {
+					input.UpdatedAt = &value
 				}
 				_, err := NewContentService(nil, nil).SavePost(context.Background(), 0, 1, input)
 				if !errors.Is(err, ErrInvalidInput) {

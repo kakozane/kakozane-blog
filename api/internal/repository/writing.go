@@ -14,7 +14,7 @@ var ErrStaleVersion = errors.New("stale version")
 
 func snapshotPost(ctx context.Context, tx *sql.Tx, id int64) error {
 	var p model.PostInput
-	if err := tx.QueryRowContext(ctx, `SELECT kind,title,slug,excerpt,content_md,cover_url,status,pinned,category_id,created_at,published_at FROM posts WHERE id=?`, id).Scan(&p.Kind, &p.Title, &p.Slug, &p.Excerpt, &p.ContentMD, &p.CoverURL, &p.Status, &p.Pinned, &p.CategoryID, &p.CreatedAt, &p.PublishedAt); err != nil {
+	if err := tx.QueryRowContext(ctx, `SELECT kind,title,slug,excerpt,content_md,cover_url,status,pinned,category_id,created_at,published_at,updated_at FROM posts WHERE id=?`, id).Scan(&p.Kind, &p.Title, &p.Slug, &p.Excerpt, &p.ContentMD, &p.CoverURL, &p.Status, &p.Pinned, &p.CategoryID, &p.CreatedAt, &p.PublishedAt, &p.UpdatedAt); err != nil {
 		return err
 	}
 	p.TagIDs = []int64{}

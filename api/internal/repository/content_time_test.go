@@ -69,17 +69,29 @@ func TestPostHistoricalTimes(t *testing.T) {
 	}
 	check(created, published)
 	created, published = created.Add(-time.Hour), published.Add(-time.Hour)
-	input.CreatedAt, input.PublishedAt = &created, &published
+	input.CreatedAt, input.PublishedAt, input.UpdatedAt = &created, &published, &published
 	if _, err := repo.SavePost(ctx, id, authorID, input); err != nil {
 		t.Fatal(err)
 	}
 	check(created, published)
+	updated, err := repo.PostByID(ctx, id)
+	if err != nil || !updated.UpdatedAt.Equal(published) {
+		t.Fatalf("custom update time: %v %v", updated.UpdatedAt, err)
+	}
 	revisions, err := repo.Revisions(ctx, id)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(revisions) == 0 || revisions[0].Snapshot.CreatedAt == nil || revisions[0].Snapshot.PublishedAt == nil || !revisions[0].Snapshot.CreatedAt.Equal(created) || !revisions[0].Snapshot.PublishedAt.Equal(published) {
+	if len(revisions) == 0 || revisions[0].Snapshot.UpdatedAt == nil || !revisions[0].Snapshot.UpdatedAt.Equal(published) || revisions[0].Snapshot.CreatedAt == nil || revisions[0].Snapshot.PublishedAt == nil || !revisions[0].Snapshot.CreatedAt.Equal(created) || !revisions[0].Snapshot.PublishedAt.Equal(published) {
 		t.Fatal("revision lost historical times")
+	}
+	input.UpdatedAt = nil
+	if _, err := repo.SavePost(ctx, id, authorID, input); err != nil {
+		t.Fatal(err)
+	}
+	updated, err = repo.PostByID(ctx, id)
+	if err != nil || updated.UpdatedAt.Before(time.Now().Add(-time.Minute)) {
+		t.Fatalf("automatic update time: %v %v", updated.UpdatedAt, err)
 	}
 	// 未选时间的新草稿没有发布时间，首次发布自动补齐。
 	input.Slug += "-default"
